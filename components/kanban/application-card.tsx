@@ -5,13 +5,12 @@ import { useDraggable } from '@dnd-kit/core'
 import type { ApplicationWithCandidate } from '@/components/kanban/pipeline-board'
 import { StarRating } from '@/components/candidates/star-rating'
 import { Badge } from '@/components/ui/badge'
+import { REJECTION_REASON_LABELS } from '@/lib/pipeline'
 
 export function ApplicationCard({
   application,
-  showJob = false,
 }: {
   application: ApplicationWithCandidate
-  showJob?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: application.id })
@@ -21,6 +20,11 @@ export function ApplicationCard({
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
       }
     : undefined
+
+  const subtitle =
+    application.stage === 'REJECTED' && application.rejectionReason
+      ? `${application.job?.internalName} · ${REJECTION_REASON_LABELS[application.rejectionReason]}`
+      : application.job?.internalName
 
   return (
     <div
@@ -44,15 +48,8 @@ export function ApplicationCard({
         </Link>
         <StarRating value={application.candidate.rating} size="sm" />
       </div>
-      {application.candidate.currentTitle && (
-        <p className="truncate text-xs text-muted-foreground">
-          {application.candidate.currentTitle}
-        </p>
-      )}
-      {showJob && application.job && (
-        <p className="truncate text-xs text-muted-foreground">
-          {application.job.internalName}
-        </p>
+      {subtitle && (
+        <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
       )}
       {application.candidate.tags && application.candidate.tags.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">

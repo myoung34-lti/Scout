@@ -50,16 +50,20 @@ export async function uploadResumeAction(
   formData: FormData
 ): Promise<UploadResumeResult> {
   const candidateId = formData.get('candidateId')
-  const file = formData.get('file')
+  const files = formData.getAll('file').filter((f): f is File => f instanceof File)
 
   if (typeof candidateId !== 'string' || !candidateId) {
     return { error: 'Missing candidate.' }
   }
-  if (!(file instanceof File)) {
+  if (files.length === 0) {
     return { error: 'No file selected.' }
   }
 
-  return uploadResumeForCandidate(candidateId, file)
+  for (const file of files) {
+    const result = await uploadResumeForCandidate(candidateId, file)
+    if (result?.error) return result
+  }
+  return undefined
 }
 
 export async function getResumeFile(resumeId: string) {

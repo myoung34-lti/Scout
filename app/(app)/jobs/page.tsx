@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { listJobs } from '@/lib/actions/jobs'
-import { JobListTable } from '@/components/jobs/job-list-table'
+import { JobList } from '@/components/jobs/job-list'
 import { Button } from '@/components/ui/button'
 import type { JobStatus } from '@prisma/client'
 
@@ -49,7 +49,7 @@ export default async function JobsPage({
         ))}
       </div>
 
-      <JobListTable jobs={jobs} />
+      <JobList jobs={jobs} />
     </div>
   )
 }

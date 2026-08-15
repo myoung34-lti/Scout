@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Plus } from 'lucide-react'
 import { searchCandidates } from '@/lib/actions/search'
 import { listJobs, listDistinctLocations } from '@/lib/actions/jobs'
 import { listTagOptions } from '@/lib/actions/tags'
@@ -9,6 +10,7 @@ import { StarRating } from '@/components/candidates/star-rating'
 import { CandidateSearchFilters } from '@/components/candidates/candidate-search-filters'
 import { ActiveFilterPills } from '@/components/candidates/active-filter-pills'
 import type { PipelineStage } from '@prisma/client'
+import { getCandidateDisplayTitle } from '@/lib/candidate-type'
 
 function toArray(value: string | string[] | undefined): string[] {
   if (!value) return []
@@ -63,7 +65,10 @@ export default async function CandidatesPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Candidates</h1>
         <Button asChild>
-          <Link href="/candidates/new">New Candidate</Link>
+          <Link href="/candidates/new">
+            <Plus />
+            Add Candidate
+          </Link>
         </Button>
       </div>
 
@@ -98,7 +103,7 @@ export default async function CandidatesPage({
                       <StarRating value={c.rating} size="sm" />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {c.currentTitle ?? c.email ?? '—'}
+                      {getCandidateDisplayTitle(c) ?? c.email ?? '—'}
                       {c.location && ` · ${c.location}`}
                     </p>
                     {c.tags.length > 0 && (
@@ -114,7 +119,7 @@ export default async function CandidatesPage({
                   <div className="flex flex-wrap justify-end gap-1">
                     {c.applications.map((app) => (
                       <Badge key={app.id} variant="secondary">
-                        {app.job.internalName} · {STAGE_LABELS[app.stage]}
+                        {STAGE_LABELS[app.stage]}
                       </Badge>
                     ))}
                   </div>

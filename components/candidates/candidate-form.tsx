@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Job, User } from '@prisma/client'
+import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
+import { FileInput } from '@/components/ui/file-input'
 
 type CandidateFormState = {
   errors?: Record<string, string[] | undefined>
@@ -58,6 +60,11 @@ export function CandidateForm({
 
   return (
     <form action={formAction} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="resume">Resume (optional)</Label>
+        <FileInput id="resume" name="resume" accept=".pdf,.doc,.docx" multiple />
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="firstName">First name</Label>
@@ -95,8 +102,24 @@ export function CandidateForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="currentTitle">Current title</Label>
-          <Input id="currentTitle" name="currentTitle" />
+          <Label htmlFor="candidateType">Type</Label>
+          <Select name="candidateType">
+            <SelectTrigger id="candidateType" className="w-full">
+              <SelectValue placeholder="Select a type" />
+            </SelectTrigger>
+            <SelectContent>
+              {ALL_CANDIDATE_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {CANDIDATE_TYPE_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {state?.errors?.candidateType && (
+            <p className="text-sm text-destructive">
+              {state.errors.candidateType[0]}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="currentCompany">Current company</Label>
@@ -149,11 +172,6 @@ export function CandidateForm({
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="resume">Resume (optional)</Label>
-        <Input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx" />
       </div>
 
       <Button type="submit" disabled={pending}>

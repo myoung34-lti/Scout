@@ -12,6 +12,7 @@ export async function listJobs(statusFilter?: JobStatus) {
   return prisma.job.findMany({
     where: statusFilter ? { status: statusFilter } : undefined,
     orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { applications: true } } },
   })
 }
 

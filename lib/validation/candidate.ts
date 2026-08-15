@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ALL_CANDIDATE_TYPES } from '@/lib/candidate-type'
 
 const optionalText = z
   .string()
@@ -20,7 +21,9 @@ export const candidateSchema = z.object({
   phone: optionalText,
   linkedinUrl: optionalText,
   currentCompany: optionalText,
-  currentTitle: optionalText,
+  candidateType: z.enum(ALL_CANDIDATE_TYPES, {
+    error: 'Select a type',
+  }),
   location: optionalText,
   jobId: z.string().trim().min(1, 'A job is required'),
   ownerId: optionalText,

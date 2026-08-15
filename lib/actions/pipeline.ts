@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
-import type { PipelineStage } from '@prisma/client'
+import type { PipelineStage, RejectionReason } from '@prisma/client'
 
 const candidateWithTags = {
   include: { tags: { include: { tag: true } } },
@@ -13,7 +13,7 @@ export async function getBoardApplications(jobId: string) {
   await requireSession()
   return prisma.application.findMany({
     where: { jobId },
-    include: { candidate: candidateWithTags },
+    include: { candidate: candidateWithTags, job: true },
     orderBy: { createdAt: 'asc' },
   })
 }
@@ -32,7 +32,8 @@ export async function getAllBoardApplications() {
 
 export async function transitionStage(
   applicationId: string,
-  toStage: PipelineStage
+  toStage: PipelineStage,
+  rejectionReason?: RejectionReason
 ) {
   const user = await requireSession()
 
@@ -47,6 +48,7 @@ export async function transitionStage(
       where: { id: applicationId },
       data: {
         stage: toStage,
+        rejectionReason: toStage === 'REJECTED' ? (rejectionReason ?? null) : null,
         ...(toStage === 'HIRED' ? { hiredAt: new Date() } : {}),
         ...(toStage === 'REJECTED' ? { rejectedAt: new Date() } : {}),
       },
@@ -63,4 +65,5 @@ export async function transitionStage(
 
   revalidatePath(`/jobs/${application.jobId}`)
   revalidatePath('/pipeline')
+  revalidatePath(`/candidates/${application.candidateId}`)
 }

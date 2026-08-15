@@ -31,11 +31,7 @@ export function MasterPipelineView({
         onChange={setVisibleStages}
         counts={counts}
       />
-      <PipelineBoard
-        applications={applications}
-        stages={visibleStages}
-        showJob
-      />
+      <PipelineBoard applications={applications} stages={visibleStages} />
     </div>
   )
 }

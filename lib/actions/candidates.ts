@@ -7,6 +7,9 @@ import { requireSession } from '@/lib/session'
 import { candidateSchema } from '@/lib/validation/candidate'
 import { createApplication } from '@/lib/actions/applications'
 import { uploadResumeForCandidate } from '@/lib/actions/resumes'
+import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
+import { TERMINAL_STAGES } from '@/lib/pipeline'
+import type { CandidateType } from '@prisma/client'
 
 export async function listCandidates() {
   await requireSession()
@@ -25,6 +28,7 @@ export async function getCandidate(candidateId: string) {
     where: { id: candidateId },
     include: {
       owner: true,
+      talentPoolAddedBy: true,
       applications: {
         include: { job: true },
         orderBy: { createdAt: 'desc' },
@@ -77,6 +81,105 @@ export async function updateCandidateRating(
   revalidatePath('/jobs/[jobId]', 'page')
 }
 
+export async function updateCandidateType(
+  candidateId: string,
+  candidateType: CandidateType
+) {
+  const user = await requireSession()
+
+  if (!ALL_CANDIDATE_TYPES.includes(candidateType)) {
+    throw new Error('Invalid type')
+  }
+
+  const candidate = await prisma.candidate.findUniqueOrThrow({
+    where: { id: candidateId },
+    select: { candidateType: true },
+  })
+
+  if (candidate.candidateType === candidateType) return
+
+  const body = candidate.candidateType
+    ? `Changed type from ${CANDIDATE_TYPE_LABELS[candidate.candidateType]} to ${CANDIDATE_TYPE_LABELS[candidateType]}`
+    : `Set type to ${CANDIDATE_TYPE_LABELS[candidateType]}`
+
+  await prisma.$transaction([
+    prisma.candidate.update({ where: { id: candidateId }, data: { candidateType } }),
+    prisma.activityNote.create({
+      data: { candidateId, authorId: user.id, body },
+    }),
+  ])
+
+  revalidatePath(`/candidates/${candidateId}`)
+  revalidatePath('/candidates')
+  revalidatePath('/pipeline')
+  revalidatePath('/jobs/[jobId]', 'page')
+}
+
+export async function addCandidateToJob(candidateId: string, jobId: string) {
+  const user = await requireSession()
+
+  const existingActive = await prisma.application.findFirst({
+    where: { candidateId, jobId, stage: { notIn: TERMINAL_STAGES } },
+  })
+  if (existingActive) {
+    throw new Error('Candidate already has an active application for this job.')
+  }
+
+  await prisma.$transaction((tx) =>
+    createApplication(tx, { candidateId, jobId, changedById: user.id })
+  )
+
+  revalidatePath(`/candidates/${candidateId}`)
+  revalidatePath(`/jobs/${jobId}`)
+  revalidatePath('/pipeline')
+}
+
+export async function addCandidateToTalentPool(candidateId: string) {
+  const user = await requireSession()
+
+  const candidate = await prisma.candidate.findUniqueOrThrow({
+    where: { id: candidateId },
+    select: { inTalentPool: true },
+  })
+  if (candidate.inTalentPool) return
+
+  await prisma.$transaction([
+    prisma.candidate.update({
+      where: { id: candidateId },
+      data: {
+        inTalentPool: true,
+        talentPoolAddedAt: new Date(),
+        talentPoolAddedById: user.id,
+      },
+    }),
+    prisma.activityNote.create({
+      data: { candidateId, authorId: user.id, body: 'Added to Talent Pool' },
+    }),
+  ])
+
+  revalidatePath(`/candidates/${candidateId}`)
+  revalidatePath('/candidates')
+  revalidatePath('/talent-pool')
+}
+
+export async function removeCandidateFromTalentPool(candidateId: string) {
+  const user = await requireSession()
+
+  await prisma.$transaction([
+    prisma.candidate.update({
+      where: { id: candidateId },
+      data: { inTalentPool: false },
+    }),
+    prisma.activityNote.create({
+      data: { candidateId, authorId: user.id, body: 'Removed from Talent Pool' },
+    }),
+  ])
+
+  revalidatePath(`/candidates/${candidateId}`)
+  revalidatePath('/candidates')
+  revalidatePath('/talent-pool')
+}
+
 export async function checkDuplicateByEmail(email: string) {
   await requireSession()
 
@@ -102,7 +205,7 @@ export async function createCandidate(
     phone: formData.get('phone'),
     linkedinUrl: formData.get('linkedinUrl'),
     currentCompany: formData.get('currentCompany'),
-    currentTitle: formData.get('currentTitle'),
+    candidateType: formData.get('candidateType'),
     location: formData.get('location'),
     jobId: formData.get('jobId'),
     ownerId: formData.get('ownerId'),
@@ -131,8 +234,10 @@ export async function createCandidate(
     return candidate
   })
 
-  const resumeFile = formData.get('resume')
-  if (resumeFile instanceof File && resumeFile.size > 0) {
+  const resumeFiles = formData
+    .getAll('resume')
+    .filter((f): f is File => f instanceof File && f.size > 0)
+  for (const resumeFile of resumeFiles) {
     const result = await uploadResumeForCandidate(candidate.id, resumeFile)
     if (result?.error) {
       // Candidate was still created successfully; surface the upload

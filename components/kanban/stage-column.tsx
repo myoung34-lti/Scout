@@ -9,11 +9,9 @@ import type { PipelineStage } from '@prisma/client'
 export function StageColumn({
   stage,
   applications,
-  showJob = false,
 }: {
   stage: PipelineStage
   applications: ApplicationWithCandidate[]
-  showJob?: boolean
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
 
@@ -32,7 +30,7 @@ export function StageColumn({
       </div>
       <div className="min-h-16 space-y-2">
         {applications.map((app) => (
-          <ApplicationCard key={app.id} application={app} showJob={showJob} />
+          <ApplicationCard key={app.id} application={app} />
         ))}
       </div>
     </div>

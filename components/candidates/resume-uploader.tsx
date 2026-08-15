@@ -2,8 +2,7 @@
 
 import { useActionState, useRef } from 'react'
 import { uploadResumeAction } from '@/lib/actions/resumes'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FileInput } from '@/components/ui/file-input'
 
 export function ResumeUploader({ candidateId }: { candidateId: string }) {
   const formRef = useRef<HTMLFormElement>(null)
@@ -19,15 +18,22 @@ export function ResumeUploader({ candidateId }: { candidateId: string }) {
   )
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-2">
+    <form
+      ref={formRef}
+      action={formAction}
+      className="space-y-2"
+      onChange={(e) => {
+        if ((e.target as unknown as HTMLInputElement).name === 'file') {
+          formRef.current?.requestSubmit()
+        }
+      }}
+    >
       <input type="hidden" name="candidateId" value={candidateId} />
-      <Input name="file" type="file" accept=".pdf,.doc,.docx" required />
+      <FileInput name="file" accept=".pdf,.doc,.docx" required multiple />
+      {pending && <p className="text-sm text-muted-foreground">Uploading…</p>}
       {state?.error && (
         <p className="text-sm text-destructive">{state.error}</p>
       )}
-      <Button type="submit" size="sm" variant="outline" disabled={pending}>
-        {pending ? 'Uploading…' : 'Upload resume'}
-      </Button>
     </form>
   )
 }

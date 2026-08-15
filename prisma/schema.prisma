@@ -13,6 +13,13 @@ enum JobStatus {
   ON_HOLD
 }
 
+enum CandidateType {
+  SOFTWARE_ENGINEER
+  SYSTEMS_ENGINEER
+  ANALYST
+  INTERNAL
+}
+
 enum PipelineStage {
   APPLIED
   SCREENING
@@ -24,7 +31,20 @@ enum PipelineStage {
   OFFER
   HIRED
   REJECTED
-  TALENT_POOL
+}
+
+enum RejectionReason {
+  COMMUNICATION
+  CORE_VALUE_MISMATCH
+  LACK_OF_TECHNICAL_SKILLS
+  POSITION_FILLED
+  POSITION_CLOSED
+}
+
+// Single value today — the Admin page is built to manage whichever roles
+// exist, so adding e.g. ADMIN or INTERVIEWER later is just a new enum value.
+enum Role {
+  RECRUITER
 }
 
 // Profile row for a Supabase-authenticated team member.
@@ -34,10 +54,12 @@ model User {
   id              String         @id @db.Uuid
   name            String
   email           String         @unique
+  role            Role           @default(RECRUITER)
   createdAt       DateTime       @default(now())
   notes           ActivityNote[]
   stageChanges    StageHistory[]
   ownedCandidates Candidate[]    @relation("CandidateOwner")
+  talentPoolAdds  Candidate[]    @relation("TalentPoolAdder")
   uploadedResumes Resume[]
 }
 
@@ -59,26 +81,32 @@ model Job {
 }
 
 model Candidate {
-  id             String         @id @default(cuid())
-  firstName      String
-  lastName       String
-  email          String?
-  phone          String?
-  linkedinUrl    String?
-  currentCompany String?
-  currentTitle   String?
-  location       String?
-  rating         Int?
-  ownerId        String?        @db.Uuid
-  owner          User?          @relation("CandidateOwner", fields: [ownerId], references: [id])
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  applications   Application[]
-  tags           CandidateTag[]
-  notes          ActivityNote[]
-  resumes        Resume[]
+  id                  String         @id @default(cuid())
+  firstName           String
+  lastName            String
+  email               String?
+  phone               String?
+  linkedinUrl         String?
+  currentCompany      String?
+  currentTitle        String?
+  candidateType       CandidateType?
+  location            String?
+  rating              Int?
+  ownerId             String?        @db.Uuid
+  owner               User?          @relation("CandidateOwner", fields: [ownerId], references: [id])
+  inTalentPool        Boolean        @default(false)
+  talentPoolAddedAt   DateTime?
+  talentPoolAddedById String?        @db.Uuid
+  talentPoolAddedBy   User?          @relation("TalentPoolAdder", fields: [talentPoolAddedById], references: [id])
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  applications        Application[]
+  tags                CandidateTag[]
+  notes               ActivityNote[]
+  resumes             Resume[]
 
   @@index([email])
+  @@index([inTalentPool])
 }
 
 model Resume {
@@ -96,19 +124,20 @@ model Resume {
 }
 
 model Application {
-  id          String         @id @default(cuid())
-  candidateId String
-  jobId       String
-  stage       PipelineStage  @default(APPLIED)
-  appliedAt   DateTime       @default(now())
-  hiredAt     DateTime?
-  rejectedAt  DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  candidate   Candidate      @relation(fields: [candidateId], references: [id])
-  job         Job            @relation(fields: [jobId], references: [id])
-  history     StageHistory[]
-  notes       ActivityNote[]
+  id              String           @id @default(cuid())
+  candidateId     String
+  jobId           String
+  stage           PipelineStage    @default(APPLIED)
+  rejectionReason RejectionReason?
+  appliedAt       DateTime         @default(now())
+  hiredAt         DateTime?
+  rejectedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  candidate       Candidate        @relation(fields: [candidateId], references: [id])
+  job             Job              @relation(fields: [jobId], references: [id])
+  history         StageHistory[]
+  notes           ActivityNote[]
 
   @@index([candidateId])
   @@index([jobId])

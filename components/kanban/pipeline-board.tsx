@@ -6,6 +6,7 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import { toast } from 'sonner'
 import { transitionStage } from '@/lib/actions/pipeline'
 import { StageColumn } from '@/components/kanban/stage-column'
+import { RejectionReasonDialog } from '@/components/kanban/rejection-reason-dialog'
 import { ALL_STAGES } from '@/lib/pipeline'
 import type {
   Application,
@@ -13,6 +14,7 @@ import type {
   CandidateTag,
   Job,
   PipelineStage,
+  RejectionReason,
   Tag,
 } from '@prisma/client'
 
@@ -24,16 +26,34 @@ export type ApplicationWithCandidate = Application & {
 export function PipelineBoard({
   applications,
   stages = ALL_STAGES,
-  showJob = false,
 }: {
   applications: ApplicationWithCandidate[]
   stages?: PipelineStage[]
-  showJob?: boolean
 }) {
   const [items, setItems] = useState(applications)
+  const [pendingRejection, setPendingRejection] = useState<{
+    applicationId: string
+    previousStage: PipelineStage
+  } | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
+
+  function commitTransition(
+    applicationId: string,
+    toStage: PipelineStage,
+    previousStage: PipelineStage,
+    rejectionReason?: RejectionReason
+  ) {
+    transitionStage(applicationId, toStage, rejectionReason).catch(() => {
+      setItems((prev) =>
+        prev.map((a) =>
+          a.id === applicationId ? { ...a, stage: previousStage } : a
+        )
+      )
+      toast.error('Failed to move candidate. Please try again.')
+    })
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -50,14 +70,24 @@ export function PipelineBoard({
       prev.map((a) => (a.id === applicationId ? { ...a, stage: toStage } : a))
     )
 
-    transitionStage(applicationId, toStage).catch(() => {
-      setItems((prev) =>
-        prev.map((a) =>
-          a.id === applicationId ? { ...a, stage: previousStage } : a
-        )
+    if (toStage === 'REJECTED') {
+      setPendingRejection({ applicationId, previousStage })
+      return
+    }
+
+    commitTransition(applicationId, toStage, previousStage)
+  }
+
+  function handleRejectionResolved(reason?: RejectionReason) {
+    if (!pendingRejection) return
+    const { applicationId, previousStage } = pendingRejection
+    setPendingRejection(null)
+    setItems((prev) =>
+      prev.map((a) =>
+        a.id === applicationId ? { ...a, rejectionReason: reason ?? null } : a
       )
-      toast.error('Failed to move candidate. Please try again.')
-    })
+    )
+    commitTransition(applicationId, 'REJECTED', previousStage, reason)
   }
 
   return (
@@ -68,10 +98,13 @@ export function PipelineBoard({
             key={stage}
             stage={stage}
             applications={items.filter((a) => a.stage === stage)}
-            showJob={showJob}
           />
         ))}
       </div>
+      <RejectionReasonDialog
+        open={pendingRejection !== null}
+        onResolve={handleRejectionResolved}
+      />
     </DndContext>
   )
 }
