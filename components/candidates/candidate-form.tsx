@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useActionState } from 'react'
 import { createCandidate, checkDuplicateByEmail } from '@/lib/actions/candidates'
 import { parseResume } from '@/lib/actions/resume-parser'
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { X } from 'lucide-react'
 import type { Job, User } from '@prisma/client'
 import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
@@ -46,13 +47,44 @@ export function CandidateForm({
   >(createCandidate, undefined)
 
   const [jobId, setJobId] = useState(defaultJobId)
+  const [addToTalentPool, setAddToTalentPool] = useState(false)
+  const [ownerId, setOwnerId] = useState<string | undefined>(undefined)
+  const [candidateType, setCandidateType] = useState<string | undefined>(undefined)
   const [duplicate, setDuplicate] = useState<DuplicateCandidate | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dismissedEmail, setDismissedEmail] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
   const [parseNotice, setParseNotice] = useState<string | null>(null)
   const [skills, setSkills] = useState<string[]>([])
+  const [fields, setFields] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    linkedinUrl: '',
+    currentCompany: '',
+    location: '',
+  })
   const formRef = useRef<HTMLFormElement>(null)
+  const resumeFiles = useRef<File[]>([])
+
+  function updateField(name: keyof typeof fields) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setFields((prev) => ({ ...prev, [name]: e.target.value }))
+  }
+
+  // React resets uncontrolled form fields (including file inputs) after any
+  // action call, success or failure — restore the picked file(s) so a
+  // validation error doesn't silently drop the resume the user already chose.
+  useEffect(() => {
+    if (!state || resumeFiles.current.length === 0) return
+    const input = formRef.current?.elements.namedItem('resume')
+    if (input instanceof HTMLInputElement) {
+      const dataTransfer = new DataTransfer()
+      resumeFiles.current.forEach((f) => dataTransfer.items.add(f))
+      input.files = dataTransfer.files
+    }
+  }, [state])
 
   async function handleEmailBlur(e: React.FocusEvent<HTMLInputElement>) {
     const email = e.target.value.trim()
@@ -66,6 +98,8 @@ export function CandidateForm({
   }
 
   async function handleResumeSelected(files: File[]) {
+    resumeFiles.current = files
+
     const file = files[0]
     if (!file) return
 
@@ -80,23 +114,15 @@ export function CandidateForm({
       return
     }
 
-    const form = formRef.current
-    if (form) {
-      const fill = (name: string, value?: string) => {
-        if (!value) return
-        const field = form.elements.namedItem(name)
-        if (field instanceof HTMLInputElement && !field.value) {
-          field.value = value
-        }
-      }
-      fill('firstName', result.data.firstName)
-      fill('lastName', result.data.lastName)
-      fill('email', result.data.email)
-      fill('phone', result.data.phone)
-      fill('linkedinUrl', result.data.linkedinUrl)
-      fill('currentCompany', result.data.currentCompany)
-      fill('location', result.data.location)
-    }
+    setFields((prev) => ({
+      firstName: prev.firstName || result.data.firstName || prev.firstName,
+      lastName: prev.lastName || result.data.lastName || prev.lastName,
+      email: prev.email || result.data.email || prev.email,
+      phone: prev.phone || result.data.phone || prev.phone,
+      linkedinUrl: prev.linkedinUrl || result.data.linkedinUrl || prev.linkedinUrl,
+      currentCompany: prev.currentCompany || result.data.currentCompany || prev.currentCompany,
+      location: prev.location || result.data.location || prev.location,
+    }))
 
     if (result.data.skills && result.data.skills.length > 0) {
       setSkills(result.data.skills)
@@ -153,7 +179,13 @@ export function CandidateForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="firstName">First name</Label>
-          <Input id="firstName" name="firstName" required />
+          <Input
+            id="firstName"
+            name="firstName"
+            required
+            value={fields.firstName}
+            onChange={updateField('firstName')}
+          />
           {state?.errors?.firstName && (
             <p className="text-sm text-destructive">
               {state.errors.firstName[0]}
@@ -162,7 +194,13 @@ export function CandidateForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="lastName">Last name</Label>
-          <Input id="lastName" name="lastName" required />
+          <Input
+            id="lastName"
+            name="lastName"
+            required
+            value={fields.lastName}
+            onChange={updateField('lastName')}
+          />
           {state?.errors?.lastName && (
             <p className="text-sm text-destructive">
               {state.errors.lastName[0]}
@@ -174,21 +212,33 @@ export function CandidateForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" onBlur={handleEmailBlur} />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            value={fields.email}
+            onChange={updateField('email')}
+            onBlur={handleEmailBlur}
+          />
           {state?.errors?.email && (
             <p className="text-sm text-destructive">{state.errors.email[0]}</p>
           )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" name="phone" />
+          <Input
+            id="phone"
+            name="phone"
+            value={fields.phone}
+            onChange={updateField('phone')}
+          />
         </div>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="candidateType">Type</Label>
-          <Select name="candidateType">
+          <Select name="candidateType" value={candidateType} onValueChange={setCandidateType}>
             <SelectTrigger id="candidateType" className="w-full">
               <SelectValue placeholder="Select a type" />
             </SelectTrigger>
@@ -208,43 +258,74 @@ export function CandidateForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="currentCompany">Current company</Label>
-          <Input id="currentCompany" name="currentCompany" />
+          <Input
+            id="currentCompany"
+            name="currentCompany"
+            value={fields.currentCompany}
+            onChange={updateField('currentCompany')}
+          />
         </div>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="location">Location</Label>
-          <Input id="location" name="location" />
+          <Input
+            id="location"
+            name="location"
+            value={fields.location}
+            onChange={updateField('location')}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
-          <Input id="linkedinUrl" name="linkedinUrl" type="url" />
+          <Input
+            id="linkedinUrl"
+            name="linkedinUrl"
+            value={fields.linkedinUrl}
+            onChange={updateField('linkedinUrl')}
+          />
         </div>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="jobId">Job</Label>
-          <Select name="jobId" value={jobId} onValueChange={setJobId}>
-            <SelectTrigger id="jobId" className="w-full">
-              <SelectValue placeholder="Select a job" />
-            </SelectTrigger>
-            <SelectContent>
-              {jobs.map((job) => (
-                <SelectItem key={job.id} value={job.id}>
-                  {job.internalName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {state?.errors?.jobId && (
-            <p className="text-sm text-destructive">{state.errors.jobId[0]}</p>
+          {addToTalentPool ? (
+            <p className="text-sm text-muted-foreground">
+              No job — this candidate will be added directly to the Talent Pool.
+            </p>
+          ) : (
+            <>
+              <Select name="jobId" value={jobId} onValueChange={setJobId}>
+                <SelectTrigger id="jobId" className="w-full">
+                  <SelectValue placeholder="Select a job" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobs.map((job) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.internalName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {state?.errors?.jobId && (
+                <p className="text-sm text-destructive">{state.errors.jobId[0]}</p>
+              )}
+            </>
           )}
+          <label className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
+            <Checkbox
+              checked={addToTalentPool}
+              onCheckedChange={(checked) => setAddToTalentPool(checked === true)}
+            />
+            No job yet — add to Talent Pool
+          </label>
+          <input type="hidden" name="addToTalentPool" value={addToTalentPool ? 'true' : 'false'} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="ownerId">Owner</Label>
-          <Select name="ownerId">
+          <Select name="ownerId" value={ownerId} onValueChange={setOwnerId}>
             <SelectTrigger id="ownerId" className="w-full">
               <SelectValue placeholder="Unassigned" />
             </SelectTrigger>

@@ -132,7 +132,6 @@ export function EditCandidateDialog({ candidate }: { candidate: Candidate }) {
             <Input
               id="edit-linkedinUrl"
               name="linkedinUrl"
-              type="url"
               defaultValue={candidate.linkedinUrl ?? ''}
             />
           </div>

@@ -244,13 +244,14 @@ export async function createCandidate(
     location: formData.get('location'),
     jobId: formData.get('jobId'),
     ownerId: formData.get('ownerId'),
+    addToTalentPool: formData.get('addToTalentPool'),
   })
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
-  const { jobId, ownerId, ...candidateData } = parsed.data
+  const { jobId, ownerId, addToTalentPool, ...candidateData } = parsed.data
 
   const skills = formData
     .getAll('skills')
@@ -272,11 +273,25 @@ export async function createCandidate(
       },
     })
 
-    await createApplication(tx, {
-      candidateId: candidate.id,
-      jobId,
-      changedById: user.id,
-    })
+    if (addToTalentPool) {
+      await tx.candidate.update({
+        where: { id: candidate.id },
+        data: {
+          inTalentPool: true,
+          talentPoolAddedAt: new Date(),
+          talentPoolAddedById: user.id,
+        },
+      })
+      await tx.activityNote.create({
+        data: { candidateId: candidate.id, authorId: user.id, body: 'Added to Talent Pool' },
+      })
+    } else {
+      await createApplication(tx, {
+        candidateId: candidate.id,
+        jobId: jobId!,
+        changedById: user.id,
+      })
+    }
 
     // Skills pulled from the resume parser get attached the same way a
     // manually-added tag would — no separate Skills model needed.
@@ -312,6 +327,10 @@ export async function createCandidate(
   }
 
   revalidatePath('/candidates')
-  revalidatePath(`/jobs/${jobId}`)
+  if (addToTalentPool) {
+    revalidatePath('/talent-pool')
+  } else {
+    revalidatePath(`/jobs/${jobId}`)
+  }
   redirect(`/candidates/${candidate.id}`)
 }
