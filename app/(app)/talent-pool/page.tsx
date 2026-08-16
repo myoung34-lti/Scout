@@ -92,7 +92,7 @@ export default async function TalentPoolPage({
                   <p className="text-sm text-muted-foreground">
                     {getCandidateDisplayTitle(c) ?? c.email ?? '—'}
                     {c.location && ` · ${c.location}`}
-                    {c.owner && ` · Owner: ${c.owner.name}`}
+                    {c.owner && ` · Recruiter: ${c.owner.name}`}
                   </p>
                   {c.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">

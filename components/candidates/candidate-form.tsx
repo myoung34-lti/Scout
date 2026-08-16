@@ -20,6 +20,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { X } from 'lucide-react'
 import type { Job, User } from '@prisma/client'
 import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
+import { ALL_CANDIDATE_SOURCES, CANDIDATE_SOURCE_LABELS } from '@/lib/candidate-source'
+import { ACTIVE_STAGES, STAGE_LABELS } from '@/lib/pipeline'
 import { FileInput } from '@/components/ui/file-input'
 
 type CandidateFormState = {
@@ -36,10 +38,12 @@ export function CandidateForm({
   jobs,
   users,
   defaultJobId,
+  currentUserId,
 }: {
   jobs: Job[]
   users: User[]
   defaultJobId?: string
+  currentUserId?: string
 }) {
   const [state, formAction, pending] = useActionState<
     CandidateFormState | undefined,
@@ -47,9 +51,11 @@ export function CandidateForm({
   >(createCandidate, undefined)
 
   const [jobId, setJobId] = useState(defaultJobId)
+  const [stage, setStage] = useState<string | undefined>(undefined)
   const [addToTalentPool, setAddToTalentPool] = useState(false)
-  const [ownerId, setOwnerId] = useState<string | undefined>(undefined)
+  const [ownerId, setOwnerId] = useState<string | undefined>(currentUserId)
   const [candidateType, setCandidateType] = useState<string | undefined>(undefined)
+  const [source, setSource] = useState<string | undefined>(undefined)
   const [duplicate, setDuplicate] = useState<DuplicateCandidate | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dismissedEmail, setDismissedEmail] = useState<string | null>(null)
@@ -237,26 +243,6 @@ export function CandidateForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="candidateType">Type</Label>
-          <Select name="candidateType" value={candidateType} onValueChange={setCandidateType}>
-            <SelectTrigger id="candidateType" className="w-full">
-              <SelectValue placeholder="Select a type" />
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_CANDIDATE_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {CANDIDATE_TYPE_LABELS[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {state?.errors?.candidateType && (
-            <p className="text-sm text-destructive">
-              {state.errors.candidateType[0]}
-            </p>
-          )}
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="currentCompany">Current company</Label>
           <Input
             id="currentCompany"
@@ -265,9 +251,6 @@ export function CandidateForm({
             onChange={updateField('currentCompany')}
           />
         </div>
-      </div>
-
-      <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="location">Location</Label>
           <Input
@@ -277,6 +260,9 @@ export function CandidateForm({
             onChange={updateField('location')}
           />
         </div>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
           <Input
@@ -286,45 +272,8 @@ export function CandidateForm({
             onChange={updateField('linkedinUrl')}
           />
         </div>
-      </div>
-
-      <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="jobId">Job</Label>
-          {addToTalentPool ? (
-            <p className="text-sm text-muted-foreground">
-              No job — this candidate will be added directly to the Talent Pool.
-            </p>
-          ) : (
-            <>
-              <Select name="jobId" value={jobId} onValueChange={setJobId}>
-                <SelectTrigger id="jobId" className="w-full">
-                  <SelectValue placeholder="Select a job" />
-                </SelectTrigger>
-                <SelectContent>
-                  {jobs.map((job) => (
-                    <SelectItem key={job.id} value={job.id}>
-                      {job.internalName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {state?.errors?.jobId && (
-                <p className="text-sm text-destructive">{state.errors.jobId[0]}</p>
-              )}
-            </>
-          )}
-          <label className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
-            <Checkbox
-              checked={addToTalentPool}
-              onCheckedChange={(checked) => setAddToTalentPool(checked === true)}
-            />
-            No job yet — add to Talent Pool
-          </label>
-          <input type="hidden" name="addToTalentPool" value={addToTalentPool ? 'true' : 'false'} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="ownerId">Owner</Label>
+          <Label htmlFor="ownerId">Recruiter</Label>
           <Select name="ownerId" value={ownerId} onValueChange={setOwnerId}>
             <SelectTrigger id="ownerId" className="w-full">
               <SelectValue placeholder="Unassigned" />
@@ -337,6 +286,107 @@ export function CandidateForm({
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-lg border p-4">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="candidateType">Type</Label>
+            <Select name="candidateType" value={candidateType} onValueChange={setCandidateType}>
+              <SelectTrigger id="candidateType" className="w-full">
+                <SelectValue placeholder="Select a type" />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_CANDIDATE_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {CANDIDATE_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {state?.errors?.candidateType && (
+              <p className="text-sm text-destructive">
+                {state.errors.candidateType[0]}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="source">Source</Label>
+            <Select name="source" value={source} onValueChange={setSource}>
+              <SelectTrigger id="source" className="w-full">
+                <SelectValue placeholder="Select a source" />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_CANDIDATE_SOURCES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {CANDIDATE_SOURCE_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {state?.errors?.source && (
+              <p className="text-sm text-destructive">{state.errors.source[0]}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="jobId">Job</Label>
+            {addToTalentPool ? (
+              <p className="text-sm text-muted-foreground">
+                No job — this candidate will be added directly to the Talent Pool.
+              </p>
+            ) : (
+              <>
+                <Select name="jobId" value={jobId} onValueChange={setJobId}>
+                  <SelectTrigger id="jobId" className="w-full">
+                    <SelectValue placeholder="Select a job" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        {job.internalName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {state?.errors?.jobId && (
+                  <p className="text-sm text-destructive">{state.errors.jobId[0]}</p>
+                )}
+              </>
+            )}
+            <label className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
+              <Checkbox
+                checked={addToTalentPool}
+                onCheckedChange={(checked) => setAddToTalentPool(checked === true)}
+              />
+              No job yet — add to Talent Pool
+            </label>
+            <input
+              type="hidden"
+              name="addToTalentPool"
+              value={addToTalentPool ? 'true' : 'false'}
+            />
+          </div>
+
+          {!addToTalentPool && (
+            <div className="space-y-2">
+              <Label htmlFor="stage">Stage</Label>
+              <Select name="stage" value={stage} onValueChange={setStage}>
+                <SelectTrigger id="stage" className="w-full">
+                  <SelectValue placeholder="Applied" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTIVE_STAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STAGE_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 

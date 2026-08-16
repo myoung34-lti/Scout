@@ -1,7 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import {
   updateInterviewDraft,
   completeInterview,
@@ -22,26 +29,30 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 const AUTOSAVE_DELAY = 1000
 
-export function InterviewWorkspace({
-  interviewId,
-  candidateId,
-  status,
-  initialNotes,
-  initialFireflies,
-  initialRecommendation,
-  initialApplicationId,
-  applications,
-}: {
+export type InterviewWorkspaceHandle = {
+  hasUnsavedChanges: () => boolean
+}
+
+export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
   interviewId: string
-  candidateId: string
   status: InterviewStatus
   initialNotes: string
   initialFireflies: string
   initialRecommendation: InterviewRecommendation | null
   initialApplicationId: string | null
   applications: { id: string; internalName: string }[]
-}) {
-  const router = useRouter()
+}>(function InterviewWorkspace(
+  {
+    interviewId,
+    status,
+    initialNotes,
+    initialFireflies,
+    initialRecommendation,
+    initialApplicationId,
+    applications,
+  },
+  ref
+) {
   const [notes, setNotes] = useState(initialNotes)
   const [firefliesSummary, setFirefliesSummary] = useState(initialFireflies)
   const [applicationId, setApplicationId] = useState(initialApplicationId ?? 'NONE')
@@ -136,15 +147,7 @@ export function InterviewWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveStatus])
 
-  function handleBack() {
-    if (hasUnsavedChanges()) {
-      const proceed = window.confirm(
-        'You have unsaved changes. Leave without saving?'
-      )
-      if (!proceed) return
-    }
-    router.push(`/candidates/${candidateId}`)
-  }
+  useImperativeHandle(ref, () => ({ hasUnsavedChanges }))
 
   function handleComplete() {
     if (!recommendation) return
@@ -165,15 +168,8 @@ export function InterviewWorkspace({
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-background p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Back to profile
-        </button>
-        {saveLabel && (
+      {saveLabel && (
+        <div className="mb-4 flex justify-end">
           <span
             className={`text-xs ${
               saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'
@@ -181,8 +177,8 @@ export function InterviewWorkspace({
           >
             {saveLabel}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {applications.length > 0 && (
         <div className="mb-4 space-y-2">
@@ -247,4 +243,4 @@ export function InterviewWorkspace({
       </div>
     </div>
   )
-}
+})

@@ -16,6 +16,37 @@ import { AddToJobDialog } from '@/components/candidates/add-to-job-dialog'
 import { TalentPoolToggle } from '@/components/candidates/talent-pool-toggle'
 import { ApplicationPipelineStepper } from '@/components/candidates/application-pipeline-stepper'
 import { EditCandidateDialog } from '@/components/candidates/edit-candidate-dialog'
+import { INTERVIEW_STAGE_FOR_TYPE } from '@/lib/interview'
+import type {
+  PipelineStage,
+  InterviewRecommendation,
+  InterviewType,
+  InterviewStatus,
+} from '@prisma/client'
+
+// The most recent completed interview of each type wins its stage's badge —
+// `interviews` is expected pre-sorted newest-first (as getCandidate returns
+// it), so the first match per stage encountered here is the latest one.
+function stageOutcomesFor(
+  applicationId: string,
+  interviews: {
+    applicationId: string | null
+    type: InterviewType
+    status: InterviewStatus
+    recommendation: InterviewRecommendation | null
+  }[]
+): Partial<Record<PipelineStage, InterviewRecommendation>> {
+  const outcomes: Partial<Record<PipelineStage, InterviewRecommendation>> = {}
+  for (const interview of interviews) {
+    if (interview.applicationId !== applicationId) continue
+    if (interview.status !== 'COMPLETED' || !interview.recommendation) continue
+    const stage = INTERVIEW_STAGE_FOR_TYPE[interview.type]
+    if (!(stage in outcomes)) {
+      outcomes[stage] = interview.recommendation
+    }
+  }
+  return outcomes
+}
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
@@ -130,7 +161,7 @@ export default async function CandidateProfilePage({
               </div>
               {candidate.owner && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Owner</p>
+                  <p className="text-xs text-muted-foreground">Recruiter</p>
                   <p className="font-medium">{candidate.owner.name}</p>
                 </div>
               )}
@@ -191,6 +222,7 @@ export default async function CandidateProfilePage({
                         <ApplicationPipelineStepper
                           applicationId={app.id}
                           currentStage={app.stage}
+                          stageOutcomes={stageOutcomesFor(app.id, candidate.interviews)}
                         />
                       </div>
                     )}

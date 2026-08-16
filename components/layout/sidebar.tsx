@@ -23,7 +23,7 @@ export async function Sidebar() {
     : null
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+    <aside className="sticky top-0 flex h-screen w-60 shrink-0 self-start flex-col bg-sidebar text-sidebar-foreground">
       <div className="p-4">
         <Link href="/jobs" className="flex items-center gap-2 font-semibold tracking-tight">
           <ScoutMark className="size-6 text-sidebar-primary" />

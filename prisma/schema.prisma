@@ -18,6 +18,14 @@ enum CandidateType {
   SYSTEMS_ENGINEER
   ANALYST
   INTERNAL
+  DEVOPS_ENGINEER
+}
+
+enum CandidateSource {
+  LINKEDIN
+  REFERRAL
+  APPLIED
+  CAREER_FAIR
 }
 
 enum PipelineStage {
@@ -47,11 +55,15 @@ enum Role {
   RECRUITER
 }
 
+// One value per interview-related pipeline stage — see
+// INTERVIEW_STAGE_FOR_TYPE in lib/interview.ts for the 1:1 mapping used to
+// connect a completed interview's recommendation back to its stage.
 enum InterviewType {
   INTRO
-  TECHNICAL
   BEHAVIORAL
-  OTHER
+  TECHNICAL
+  EXECUTIVE
+  CLIENT
 }
 
 enum InterviewStatus {
@@ -71,17 +83,20 @@ enum InterviewRecommendation {
 // `id` mirrors the corresponding auth.users.id from Supabase Auth —
 // no local password/credential storage here.
 model User {
-  id              String         @id @db.Uuid
-  name            String
-  email           String         @unique
-  role            Role           @default(RECRUITER)
-  createdAt       DateTime       @default(now())
-  notes           ActivityNote[]
-  stageChanges    StageHistory[]
-  ownedCandidates Candidate[]    @relation("CandidateOwner")
-  talentPoolAdds  Candidate[]    @relation("TalentPoolAdder")
-  uploadedResumes Resume[]
-  interviews      Interview[]
+  id                    String          @id @db.Uuid
+  name                  String
+  email                 String          @unique
+  role                  Role            @default(RECRUITER)
+  createdAt             DateTime        @default(now())
+  notes                 ActivityNote[]
+  stageChanges          StageHistory[]
+  ownedCandidates       Candidate[]     @relation("CandidateOwner")
+  talentPoolAdds        Candidate[]     @relation("TalentPoolAdder")
+  uploadedResumes       Resume[]
+  interviews            Interview[]
+  createdPrompts        Prompt[]        @relation("PromptCreatedBy")
+  updatedPrompts        Prompt[]        @relation("PromptUpdatedBy")
+  createdPromptVersions PromptVersion[] @relation("PromptVersionCreatedBy")
 }
 
 model Job {
@@ -102,7 +117,7 @@ model Job {
 }
 
 model Candidate {
-  id                  String         @id @default(cuid())
+  id                  String           @id @default(cuid())
   firstName           String
   lastName            String
   email               String?
@@ -111,16 +126,17 @@ model Candidate {
   currentCompany      String?
   currentTitle        String?
   candidateType       CandidateType?
+  source              CandidateSource?
   location            String?
   rating              Int?
-  ownerId             String?        @db.Uuid
-  owner               User?          @relation("CandidateOwner", fields: [ownerId], references: [id])
-  inTalentPool        Boolean        @default(false)
+  ownerId             String?          @db.Uuid
+  owner               User?            @relation("CandidateOwner", fields: [ownerId], references: [id])
+  inTalentPool        Boolean          @default(false)
   talentPoolAddedAt   DateTime?
-  talentPoolAddedById String?        @db.Uuid
-  talentPoolAddedBy   User?          @relation("TalentPoolAdder", fields: [talentPoolAddedById], references: [id])
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  talentPoolAddedById String?          @db.Uuid
+  talentPoolAddedBy   User?            @relation("TalentPoolAdder", fields: [talentPoolAddedById], references: [id])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   applications        Application[]
   tags                CandidateTag[]
   notes               ActivityNote[]
@@ -233,4 +249,57 @@ model Interview {
   interviewer      User                     @relation(fields: [interviewerId], references: [id])
 
   @@index([candidateId, createdAt])
+}
+
+enum PromptCategory {
+  INTERVIEW
+  CANDIDATE
+  COMMUNICATION
+  ANALYSIS
+  SYSTEM
+}
+
+// The single source of truth for every AI instruction used in Scout —
+// features retrieve content exclusively through getActivePromptContent(key)
+// in lib/prompts.ts, never by querying this table directly.
+model Prompt {
+  id               String          @id @default(cuid())
+  key              String          @unique
+  name             String
+  description      String?
+  category         PromptCategory
+  isActive         Boolean         @default(true)
+  // Points at whichever PromptVersion is currently live. A direct pointer
+  // (rather than an isCurrent flag on PromptVersion) makes "which version is
+  // active" a single column read, and structurally impossible to have more
+  // than one current version per prompt.
+  currentVersionId String?         @unique
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  createdById      String          @db.Uuid
+  updatedById      String          @db.Uuid
+  createdBy        User            @relation("PromptCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User            @relation("PromptUpdatedBy", fields: [updatedById], references: [id])
+  currentVersion   PromptVersion?  @relation("PromptCurrentVersion", fields: [currentVersionId], references: [id])
+  versions         PromptVersion[] @relation("PromptVersions")
+
+  @@index([category])
+}
+
+// Immutable history — created once, never edited or deleted. Editing a
+// prompt always creates a new row and repoints Prompt.currentVersionId;
+// restoring an old version copies its content into a new row the same way.
+model PromptVersion {
+  id          String   @id @default(cuid())
+  promptId    String
+  version     Int
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  createdById String   @db.Uuid
+  prompt      Prompt   @relation("PromptVersions", fields: [promptId], references: [id])
+  createdBy   User     @relation("PromptVersionCreatedBy", fields: [createdById], references: [id])
+  currentFor  Prompt?  @relation("PromptCurrentVersion")
+
+  @@unique([promptId, version])
+  @@index([promptId, createdAt])
 }

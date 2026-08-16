@@ -1,19 +1,40 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { ChevronRight, Trash2 } from 'lucide-react'
+import { ChevronRight, Trash2, Check, X, CircleHelp } from 'lucide-react'
 import { transitionStage } from '@/lib/actions/pipeline'
 import { Button } from '@/components/ui/button'
 import { RejectionReasonDialog } from '@/components/kanban/rejection-reason-dialog'
 import { STAGE_LABELS, STEPPER_STAGES } from '@/lib/pipeline'
-import type { PipelineStage, RejectionReason } from '@prisma/client'
+import { recommendationOutcome } from '@/lib/interview'
+import type { PipelineStage, RejectionReason, InterviewRecommendation } from '@prisma/client'
+
+const OUTCOME_ICON_CLASS: Record<'pass' | 'maybe' | 'fail', string> = {
+  pass: 'bg-emerald-500 text-white',
+  maybe: 'bg-amber-500 text-white',
+  fail: 'bg-red-500 text-white',
+}
+
+function OutcomeBadge({ recommendation }: { recommendation: InterviewRecommendation }) {
+  const outcome = recommendationOutcome(recommendation)
+  const Icon = outcome === 'pass' ? Check : outcome === 'maybe' ? CircleHelp : X
+  return (
+    <span
+      className={`absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full ring-2 ring-background ${OUTCOME_ICON_CLASS[outcome]}`}
+    >
+      <Icon className="size-2.5" strokeWidth={3} />
+    </span>
+  )
+}
 
 export function ApplicationPipelineStepper({
   applicationId,
   currentStage,
+  stageOutcomes,
 }: {
   applicationId: string
   currentStage: PipelineStage
+  stageOutcomes?: Partial<Record<PipelineStage, InterviewRecommendation>>
 }) {
   const [pending, startTransition] = useTransition()
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -62,17 +83,22 @@ export function ApplicationPipelineStepper({
                 disabled={pending}
                 className="flex w-20 shrink-0 flex-col items-center gap-1"
               >
-                <span
-                  className={`flex size-7 items-center justify-center rounded-full border-2 transition-colors ${
-                    isCurrent
-                      ? 'border-primary bg-primary'
-                      : isPast
-                        ? 'border-primary bg-primary/15'
-                        : 'border-muted-foreground/30 bg-background hover:border-muted-foreground/60'
-                  }`}
-                >
-                  {isCurrent && (
-                    <span className="size-2 rounded-full bg-primary-foreground" />
+                <span className="relative flex">
+                  <span
+                    className={`flex size-7 items-center justify-center rounded-full border-2 transition-colors ${
+                      isCurrent
+                        ? 'border-primary bg-primary'
+                        : isPast
+                          ? 'border-primary bg-primary/15'
+                          : 'border-muted-foreground/30 bg-background hover:border-muted-foreground/60'
+                    }`}
+                  >
+                    {isCurrent && (
+                      <span className="size-2 rounded-full bg-primary-foreground" />
+                    )}
+                  </span>
+                  {stageOutcomes?.[stage] && (
+                    <OutcomeBadge recommendation={stageOutcomes[stage]!} />
                   )}
                 </span>
                 <span

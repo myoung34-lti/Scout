@@ -8,7 +8,7 @@ export default async function NewCandidatePage({
 }: {
   searchParams: Promise<{ jobId?: string }>
 }) {
-  await requireSession()
+  const user = await requireSession()
   const { jobId } = await searchParams
 
   const [jobs, users] = await Promise.all([
@@ -22,7 +22,12 @@ export default async function NewCandidatePage({
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold">Add Candidate</h1>
-      <CandidateForm jobs={jobs} users={users} defaultJobId={jobId} />
+      <CandidateForm
+        jobs={jobs}
+        users={users}
+        defaultJobId={jobId}
+        currentUserId={user.id}
+      />
     </div>
   )
 }

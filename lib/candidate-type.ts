@@ -6,6 +6,7 @@ export const CANDIDATE_TYPE_LABELS: Record<CandidateType, string> = {
   SYSTEMS_ENGINEER: 'Systems Engineer',
   ANALYST: 'Analyst',
   INTERNAL: 'Internal',
+  DEVOPS_ENGINEER: 'DevOps Engineer',
 }
 
 export const ALL_CANDIDATE_TYPES = [
@@ -13,6 +14,7 @@ export const ALL_CANDIDATE_TYPES = [
   'SYSTEMS_ENGINEER',
   'ANALYST',
   'INTERNAL',
+  'DEVOPS_ENGINEER',
 ] as const satisfies readonly CandidateType[]
 
 // If the candidate is actively in a job's pipeline, or was hired into one,

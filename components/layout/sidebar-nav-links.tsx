@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, Users, Kanban, Bookmark, ShieldCheck } from 'lucide-react'
+import { Briefcase, Users, Kanban, Bookmark, ScrollText, ShieldCheck } from 'lucide-react'
 
 const LINKS = [
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/candidates', label: 'Candidates', icon: Users },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/talent-pool', label: 'Talent Pool', icon: Bookmark },
+  { href: '/prompts', label: 'Prompt Library', icon: ScrollText },
   { href: '/admin', label: 'Admin', icon: ShieldCheck },
 ]
 

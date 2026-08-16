@@ -9,7 +9,7 @@ import { createApplication } from '@/lib/actions/applications'
 import { uploadResumeForCandidate } from '@/lib/actions/resumes'
 import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
 import { TERMINAL_STAGES } from '@/lib/pipeline'
-import type { CandidateType } from '@prisma/client'
+import type { CandidateType, PipelineStage } from '@prisma/client'
 
 export async function listCandidates() {
   await requireSession()
@@ -242,7 +242,9 @@ export async function createCandidate(
     currentCompany: formData.get('currentCompany'),
     candidateType: formData.get('candidateType'),
     location: formData.get('location'),
+    source: formData.get('source'),
     jobId: formData.get('jobId'),
+    stage: formData.get('stage'),
     ownerId: formData.get('ownerId'),
     addToTalentPool: formData.get('addToTalentPool'),
   })
@@ -251,7 +253,7 @@ export async function createCandidate(
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
-  const { jobId, ownerId, addToTalentPool, ...candidateData } = parsed.data
+  const { jobId, stage, ownerId, addToTalentPool, ...candidateData } = parsed.data
 
   const skills = formData
     .getAll('skills')
@@ -290,6 +292,7 @@ export async function createCandidate(
         candidateId: candidate.id,
         jobId: jobId!,
         changedById: user.id,
+        stage: stage as PipelineStage | undefined,
       })
     }
 
