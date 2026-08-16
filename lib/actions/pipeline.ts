@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
+import { REJECTION_REASON_LABELS } from '@/lib/pipeline'
 import type { PipelineStage, RejectionReason } from '@prisma/client'
 
 const candidateWithTags = {
@@ -39,6 +40,7 @@ export async function transitionStage(
 
   const application = await prisma.application.findUniqueOrThrow({
     where: { id: applicationId },
+    include: { job: true },
   })
 
   if (application.stage === toStage) return
@@ -61,6 +63,22 @@ export async function transitionStage(
         changedById: user.id,
       },
     }),
+    ...(toStage === 'REJECTED'
+      ? [
+          prisma.activityNote.create({
+            data: {
+              candidateId: application.candidateId,
+              applicationId,
+              authorId: user.id,
+              body: `Rejected from ${application.job.internalName}${
+                rejectionReason
+                  ? ` (${REJECTION_REASON_LABELS[rejectionReason]})`
+                  : ''
+              }`,
+            },
+          }),
+        ]
+      : []),
   ])
 
   revalidatePath(`/jobs/${application.jobId}`)

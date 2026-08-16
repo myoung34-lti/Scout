@@ -1,11 +1,12 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { searchCandidates } from '@/lib/actions/search'
 import { listJobs, listDistinctLocations } from '@/lib/actions/jobs'
 import { listTagOptions } from '@/lib/actions/tags'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { STAGE_LABELS, ALL_STAGES } from '@/lib/pipeline'
+import { STAGE_LABELS, ALL_STAGES, ACTIVE_STAGES } from '@/lib/pipeline'
 import { StarRating } from '@/components/candidates/star-rating'
 import { CandidateSearchFilters } from '@/components/candidates/candidate-search-filters'
 import { ActiveFilterPills } from '@/components/candidates/active-filter-pills'
@@ -23,6 +24,20 @@ export default async function CandidatesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
+
+  // Default view is "active" candidates (in an in-progress application) —
+  // redirect the bare/reset URL to an explicit active-stage filter so the
+  // pills above the results always show what's actually being filtered.
+  if (params.stage === undefined) {
+    const qs = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (key === 'stage' || value === undefined) continue
+      if (Array.isArray(value)) value.forEach((v) => qs.append(key, v))
+      else qs.append(key, value)
+    }
+    ACTIVE_STAGES.forEach((s) => qs.append('stage', s))
+    redirect(`/candidates?${qs.toString()}`)
+  }
 
   const query = typeof params.q === 'string' ? params.q : undefined
   const stageParams = toArray(params.stage)

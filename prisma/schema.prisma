@@ -47,6 +47,26 @@ enum Role {
   RECRUITER
 }
 
+enum InterviewType {
+  INTRO
+  TECHNICAL
+  BEHAVIORAL
+  OTHER
+}
+
+enum InterviewStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum InterviewRecommendation {
+  STRONG_NO
+  NO
+  MAYBE
+  YES
+  STRONG_YES
+}
+
 // Profile row for a Supabase-authenticated team member.
 // `id` mirrors the corresponding auth.users.id from Supabase Auth —
 // no local password/credential storage here.
@@ -61,6 +81,7 @@ model User {
   ownedCandidates Candidate[]    @relation("CandidateOwner")
   talentPoolAdds  Candidate[]    @relation("TalentPoolAdder")
   uploadedResumes Resume[]
+  interviews      Interview[]
 }
 
 model Job {
@@ -104,6 +125,7 @@ model Candidate {
   tags                CandidateTag[]
   notes               ActivityNote[]
   resumes             Resume[]
+  interviews          Interview[]
 
   @@index([email])
   @@index([inTalentPool])
@@ -138,6 +160,7 @@ model Application {
   job             Job              @relation(fields: [jobId], references: [id])
   history         StageHistory[]
   notes           ActivityNote[]
+  interviews      Interview[]
 
   @@index([candidateId])
   @@index([jobId])
@@ -185,6 +208,29 @@ model ActivityNote {
   candidate     Candidate      @relation(fields: [candidateId], references: [id])
   application   Application?   @relation(fields: [applicationId], references: [id])
   author        User           @relation(fields: [authorId], references: [id])
+
+  @@index([candidateId, createdAt])
+}
+
+// Interviews are candidate-scoped, not job-scoped — Scout may interview a
+// strong candidate with no open application at all. applicationId is an
+// optional cross-reference, never a requirement.
+model Interview {
+  id               String                   @id @default(cuid())
+  candidateId      String
+  applicationId    String?
+  interviewerId    String                   @db.Uuid
+  type             InterviewType
+  status           InterviewStatus          @default(DRAFT)
+  notes            String?
+  firefliesSummary String?
+  recommendation   InterviewRecommendation?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  completedAt      DateTime?
+  candidate        Candidate                @relation(fields: [candidateId], references: [id])
+  application      Application?             @relation(fields: [applicationId], references: [id])
+  interviewer      User                     @relation(fields: [interviewerId], references: [id])
 
   @@index([candidateId, createdAt])
 }

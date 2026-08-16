@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,27 +39,48 @@ export function CandidateSearchFilters({
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [location, setLocation] = useState(searchParams.get('location') ?? '')
 
+  // Tracks the value WE last pushed to the URL for each field, so the
+  // resync effect below can tell "the URL changed because our own debounce
+  // fired" apart from "the URL changed some other way (Reset Filters, a
+  // pill removed)". Without this, a debounced push that resolves while the
+  // user keeps typing snaps local state back and eats their latest input.
+  const lastPushedQuery = useRef(searchParams.get('q') ?? '')
+  const lastPushedLocation = useRef(searchParams.get('location') ?? '')
+
   // Debounce free-text fields so we don't navigate on every keystroke.
   useEffect(() => {
-    const handle = setTimeout(() => setSingle('q', query || undefined), 350)
+    const handle = setTimeout(() => {
+      lastPushedQuery.current = query
+      setSingle('q', query || undefined)
+    }, 350)
     return () => clearTimeout(handle)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   useEffect(() => {
-    const handle = setTimeout(
-      () => setSingle('location', location || undefined),
-      350
-    )
+    const handle = setTimeout(() => {
+      lastPushedLocation.current = location
+      setSingle('location', location || undefined)
+    }, 350)
     return () => clearTimeout(handle)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location])
 
-  // Re-sync local text state when the URL changes from elsewhere
-  // (Clear all filters, or removing a pill above the results).
+  // Re-sync local text state when the URL changes from elsewhere (Clear
+  // all filters, or removing a pill above the results) — but skip it when
+  // the change is just the URL catching up to our own debounced push.
   useEffect(() => {
-    setQuery(searchParams.get('q') ?? '')
-    setLocation(searchParams.get('location') ?? '')
+    const urlQuery = searchParams.get('q') ?? ''
+    if (urlQuery !== lastPushedQuery.current) {
+      lastPushedQuery.current = urlQuery
+      setQuery(urlQuery)
+    }
+
+    const urlLocation = searchParams.get('location') ?? ''
+    if (urlLocation !== lastPushedLocation.current) {
+      lastPushedLocation.current = urlLocation
+      setLocation(urlLocation)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 

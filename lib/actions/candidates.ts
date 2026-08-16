@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
-import { candidateSchema } from '@/lib/validation/candidate'
+import { candidateSchema, candidateEditSchema } from '@/lib/validation/candidate'
 import { createApplication } from '@/lib/actions/applications'
 import { uploadResumeForCandidate } from '@/lib/actions/resumes'
 import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
@@ -41,8 +41,43 @@ export async function getCandidate(candidateId: string) {
       resumes: {
         orderBy: { uploadedAt: 'desc' },
       },
+      interviews: {
+        include: { interviewer: true },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
+}
+
+export async function updateCandidateProfile(
+  candidateId: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await requireSession()
+
+  const parsed = candidateEditSchema.safeParse({
+    firstName: formData.get('firstName'),
+    lastName: formData.get('lastName'),
+    email: formData.get('email'),
+    phone: formData.get('phone'),
+    linkedinUrl: formData.get('linkedinUrl'),
+    currentCompany: formData.get('currentCompany'),
+    location: formData.get('location'),
+  })
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors }
+  }
+
+  await prisma.candidate.update({
+    where: { id: candidateId },
+    data: parsed.data,
+  })
+
+  revalidatePath(`/candidates/${candidateId}`)
+  revalidatePath('/candidates')
+  return { success: true as const }
 }
 
 export async function updateCandidateRating(
@@ -222,6 +257,14 @@ export async function createCandidate(
       data: {
         ...candidateData,
         ownerId: ownerId ?? null,
+      },
+    })
+
+    await tx.activityNote.create({
+      data: {
+        candidateId: candidate.id,
+        authorId: user.id,
+        body: 'Added to the system',
       },
     })
 

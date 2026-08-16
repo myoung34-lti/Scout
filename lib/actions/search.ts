@@ -20,14 +20,25 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
   const { query, stages, jobId, jobLocation, minRating, location, tagIds } =
     filters
   const hasStages = stages && stages.length > 0
+  const queryWords = query?.trim().split(/\s+/).filter(Boolean) ?? []
 
   return prisma.candidate.findMany({
     where: {
-      ...(query
+      ...(queryWords.length > 0
         ? {
             OR: [
-              { firstName: { contains: query, mode: 'insensitive' } },
-              { lastName: { contains: query, mode: 'insensitive' } },
+              // A multi-word query like "Michael Young" needs each word
+              // matched across firstName/lastName — checking the whole
+              // phrase against either field alone never matches a name
+              // split across both.
+              {
+                AND: queryWords.map((word) => ({
+                  OR: [
+                    { firstName: { contains: word, mode: 'insensitive' } },
+                    { lastName: { contains: word, mode: 'insensitive' } },
+                  ],
+                })),
+              },
               { email: { contains: query, mode: 'insensitive' } },
               {
                 notes: {

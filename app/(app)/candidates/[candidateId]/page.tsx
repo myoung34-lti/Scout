@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText, ArrowLeft } from 'lucide-react'
 import { getCandidate } from '@/lib/actions/candidates'
+import { STAGE_LABELS, TERMINAL_STAGES, REJECTION_REASON_LABELS } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
-import { STAGE_LABELS, TERMINAL_STAGES, ACTIVE_STAGES, REJECTION_REASON_LABELS } from '@/lib/pipeline'
 import { ResumeUploader } from '@/components/candidates/resume-uploader'
 import { CandidateRating } from '@/components/candidates/candidate-rating'
 import { ActivityFeed } from '@/components/candidates/activity-feed'
@@ -13,12 +14,14 @@ import { getCandidateDisplayTitle } from '@/lib/candidate-type'
 import { CandidateTypeSelect } from '@/components/candidates/candidate-type-select'
 import { AddToJobDialog } from '@/components/candidates/add-to-job-dialog'
 import { TalentPoolToggle } from '@/components/candidates/talent-pool-toggle'
-import { ApplicationStageActions } from '@/components/candidates/application-stage-actions'
+import { ApplicationPipelineStepper } from '@/components/candidates/application-pipeline-stepper'
+import { EditCandidateDialog } from '@/components/candidates/edit-candidate-dialog'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
   timeStyle: 'short',
 })
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
 export default async function CandidateProfilePage({
   params,
@@ -46,38 +49,105 @@ export default async function CandidateProfilePage({
   const subtitleParts = [
     getCandidateDisplayTitle(candidate),
     candidate.currentCompany && `at ${candidate.currentCompany}`,
-    candidate.location,
   ].filter(Boolean)
+
+  const initials =
+    `${candidate.firstName[0] ?? ''}${candidate.lastName[0] ?? ''}`.toUpperCase()
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/candidates"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Back to all candidates
+      </Link>
+
       <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">
-            {candidate.firstName} {candidate.lastName}
-          </h1>
-          <CandidateRating
-            candidateId={candidate.id}
-            initialRating={candidate.rating}
-          />
-        </div>
-        {subtitleParts.length > 0 && (
-          <p className="text-muted-foreground">{subtitleParts.join(' · ')}</p>
-        )}
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {candidate.email && <span>{candidate.email}</span>}
-          {candidate.phone && <span>{candidate.phone}</span>}
-          {candidate.linkedinUrl && (
-            <a
-              href={candidate.linkedinUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              LinkedIn
-            </a>
-          )}
-          {candidate.owner && <span>Owner: {candidate.owner.name}</span>}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-xl font-semibold text-muted-foreground">
+              {initials}
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-semibold">
+                  {candidate.firstName} {candidate.lastName}
+                </h1>
+                <CandidateRating
+                  candidateId={candidate.id}
+                  initialRating={candidate.rating}
+                />
+              </div>
+              {subtitleParts.length > 0 && (
+                <p className="text-muted-foreground">{subtitleParts.join(' · ')}</p>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {candidate.location && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="size-3.5" />
+                    {candidate.location}
+                  </span>
+                )}
+                {candidate.email && (
+                  <a
+                    href={`mailto:${candidate.email}`}
+                    className="flex items-center gap-1.5 hover:text-foreground"
+                  >
+                    <Mail className="size-3.5" />
+                    {candidate.email}
+                  </a>
+                )}
+                {candidate.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="size-3.5" />
+                    {candidate.phone}
+                  </span>
+                )}
+                {candidate.linkedinUrl && (
+                  <a
+                    href={candidate.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 hover:text-foreground"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    LinkedIn
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-start gap-4">
+            <div className="flex items-start gap-6 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Added</p>
+                <p className="font-medium">
+                  {shortDateFormatter.format(candidate.createdAt)}
+                </p>
+              </div>
+              {candidate.owner && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Owner</p>
+                  <p className="font-medium">{candidate.owner.name}</p>
+                </div>
+              )}
+            </div>
+            <EditCandidateDialog
+              candidate={{
+                id: candidate.id,
+                firstName: candidate.firstName,
+                lastName: candidate.lastName,
+                email: candidate.email,
+                phone: candidate.phone,
+                linkedinUrl: candidate.linkedinUrl,
+                currentCompany: candidate.currentCompany,
+                location: candidate.location,
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -98,7 +168,7 @@ export default async function CandidateProfilePage({
                 Not assigned to any job.
               </p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-4">
                 {candidate.applications.map((app) => (
                   <li key={app.id} className="rounded-md border p-3">
                     <div className="flex items-center justify-between gap-3">
@@ -108,20 +178,17 @@ export default async function CandidateProfilePage({
                       >
                         {app.job.internalName}
                       </Link>
-                      <div className="flex items-center gap-2">
-                        {app.stage === 'REJECTED' && app.rejectionReason && (
-                          <span className="text-xs text-muted-foreground">
-                            {REJECTION_REASON_LABELS[app.rejectionReason]}
-                          </span>
-                        )}
+                      {app.stage === 'REJECTED' && (
                         <Badge variant="secondary">
-                          {STAGE_LABELS[app.stage]}
+                          {STAGE_LABELS.REJECTED}
+                          {app.rejectionReason &&
+                            ` · ${REJECTION_REASON_LABELS[app.rejectionReason]}`}
                         </Badge>
-                      </div>
+                      )}
                     </div>
-                    {(ACTIVE_STAGES as string[]).includes(app.stage) && (
+                    {app.stage !== 'REJECTED' && (
                       <div className="mt-2">
-                        <ApplicationStageActions
+                        <ApplicationPipelineStepper
                           applicationId={app.id}
                           currentStage={app.stage}
                         />
@@ -137,13 +204,18 @@ export default async function CandidateProfilePage({
             <h2 className="mb-3 text-sm font-medium text-muted-foreground">
               Activity
             </h2>
-            <ActivityFeed candidateId={candidate.id} notes={candidate.notes} />
+            <ActivityFeed
+              candidateId={candidate.id}
+              notes={candidate.notes}
+              interviews={candidate.interviews}
+            />
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="rounded-lg border bg-background p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Users className="size-4" />
               Talent Pool
             </h2>
             <TalentPoolToggle
@@ -155,7 +227,8 @@ export default async function CandidateProfilePage({
           </div>
 
           <div className="rounded-lg border bg-background p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Tag className="size-4" />
               Type
             </h2>
             <CandidateTypeSelect
@@ -165,7 +238,8 @@ export default async function CandidateProfilePage({
           </div>
 
           <div className="rounded-lg border bg-background p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <FileText className="size-4" />
               Resumes
             </h2>
             {candidate.resumes.length > 0 && (
@@ -194,7 +268,8 @@ export default async function CandidateProfilePage({
           </div>
 
           <div className="rounded-lg border bg-background p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Tag className="size-4" />
               Tags
             </h2>
             <TagInput

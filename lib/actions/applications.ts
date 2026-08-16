@@ -25,5 +25,18 @@ export async function createApplication(
     },
   })
 
+  const job = await tx.job.findUniqueOrThrow({
+    where: { id: jobId },
+    select: { internalName: true },
+  })
+  await tx.activityNote.create({
+    data: {
+      candidateId,
+      applicationId: application.id,
+      authorId: changedById,
+      body: `Added to ${job.internalName}`,
+    },
+  })
+
   return application
 }
