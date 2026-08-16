@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Plus } from 'lucide-react'
 import { listJobs } from '@/lib/actions/jobs'
 import { JobList } from '@/components/jobs/job-list'
 import { Button } from '@/components/ui/button'
@@ -29,7 +30,10 @@ export default async function JobsPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Jobs</h1>
         <Button asChild>
-          <Link href="/jobs/new">New Job</Link>
+          <Link href="/jobs/new">
+            <Plus />
+            Add Job
+          </Link>
         </Button>
       </div>
 

@@ -9,12 +9,14 @@ export function FileInput({
   accept,
   required,
   multiple,
+  onFilesSelected,
 }: {
   id?: string
   name: string
   accept?: string
   required?: boolean
   multiple?: boolean
+  onFilesSelected?: (files: File[]) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileNames, setFileNames] = useState<string[]>([])
@@ -30,9 +32,11 @@ export function FileInput({
         required={required}
         multiple={multiple}
         className="hidden"
-        onChange={(e) =>
-          setFileNames(Array.from(e.target.files ?? []).map((f) => f.name))
-        }
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? [])
+          setFileNames(files.map((f) => f.name))
+          onFilesSelected?.(files)
+        }}
       />
       <Button
         type="button"

@@ -252,6 +252,10 @@ export async function createCandidate(
 
   const { jobId, ownerId, ...candidateData } = parsed.data
 
+  const skills = formData
+    .getAll('skills')
+    .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+
   const candidate = await prisma.$transaction(async (tx) => {
     const candidate = await tx.candidate.create({
       data: {
@@ -273,6 +277,23 @@ export async function createCandidate(
       jobId,
       changedById: user.id,
     })
+
+    // Skills pulled from the resume parser get attached the same way a
+    // manually-added tag would — no separate Skills model needed.
+    for (const rawLabel of skills) {
+      const displayLabel = rawLabel.trim()
+      const label = displayLabel.toLowerCase()
+      const tag = await tx.tag.upsert({
+        where: { label },
+        update: {},
+        create: { label, displayLabel },
+      })
+      await tx.candidateTag.upsert({
+        where: { candidateId_tagId: { candidateId: candidate.id, tagId: tag.id } },
+        update: {},
+        create: { candidateId: candidate.id, tagId: tag.id },
+      })
+    }
 
     return candidate
   })

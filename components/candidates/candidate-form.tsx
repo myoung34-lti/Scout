@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useActionState } from 'react'
 import { createCandidate, checkDuplicateByEmail } from '@/lib/actions/candidates'
+import { parseResume } from '@/lib/actions/resume-parser'
 import { DuplicateWarningDialog } from '@/components/candidates/duplicate-warning-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { X } from 'lucide-react'
 import type { Job, User } from '@prisma/client'
 import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
 import { FileInput } from '@/components/ui/file-input'
@@ -46,6 +49,10 @@ export function CandidateForm({
   const [duplicate, setDuplicate] = useState<DuplicateCandidate | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dismissedEmail, setDismissedEmail] = useState<string | null>(null)
+  const [parsing, setParsing] = useState(false)
+  const [parseNotice, setParseNotice] = useState<string | null>(null)
+  const [skills, setSkills] = useState<string[]>([])
+  const formRef = useRef<HTMLFormElement>(null)
 
   async function handleEmailBlur(e: React.FocusEvent<HTMLInputElement>) {
     const email = e.target.value.trim()
@@ -58,11 +65,89 @@ export function CandidateForm({
     }
   }
 
+  async function handleResumeSelected(files: File[]) {
+    const file = files[0]
+    if (!file) return
+
+    setParsing(true)
+    setParseNotice(null)
+
+    const result = await parseResume(file)
+
+    if ('error' in result) {
+      setParseNotice(result.error)
+      setParsing(false)
+      return
+    }
+
+    const form = formRef.current
+    if (form) {
+      const fill = (name: string, value?: string) => {
+        if (!value) return
+        const field = form.elements.namedItem(name)
+        if (field instanceof HTMLInputElement && !field.value) {
+          field.value = value
+        }
+      }
+      fill('firstName', result.data.firstName)
+      fill('lastName', result.data.lastName)
+      fill('email', result.data.email)
+      fill('phone', result.data.phone)
+      fill('linkedinUrl', result.data.linkedinUrl)
+      fill('currentCompany', result.data.currentCompany)
+      fill('location', result.data.location)
+    }
+
+    if (result.data.skills && result.data.skills.length > 0) {
+      setSkills(result.data.skills)
+    }
+
+    setParseNotice('Filled in from the resume — please review before saving.')
+    setParsing(false)
+  }
+
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
       <div className="space-y-2">
         <Label htmlFor="resume">Resume (optional)</Label>
-        <FileInput id="resume" name="resume" accept=".pdf,.doc,.docx" multiple />
+        <FileInput
+          id="resume"
+          name="resume"
+          accept=".pdf,.doc,.docx"
+          multiple
+          onFilesSelected={handleResumeSelected}
+        />
+        {parsing && (
+          <p className="text-sm text-muted-foreground">Reading resume…</p>
+        )}
+        {!parsing && parseNotice && (
+          <p className="text-sm text-muted-foreground">{parseNotice}</p>
+        )}
+        {skills.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+              Skills found in the resume — added as tags, remove any that don&apos;t fit:
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {skills.map((skill) => (
+                <Badge key={skill} variant="secondary" className="gap-1 pr-1">
+                  {skill}
+                  <input type="hidden" name="skills" value={skill} />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSkills((prev) => prev.filter((s) => s !== skill))
+                    }
+                    aria-label={`Remove ${skill}`}
+                    className="rounded-full hover:bg-muted-foreground/20"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
