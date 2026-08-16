@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getInterview } from '@/lib/actions/interviews'
 import { INTERVIEW_TYPE_LABELS } from '@/lib/interview'
+import { getActivePromptForInterviewType } from '@/lib/prompts'
 import { InterviewPageShell } from '@/components/interviews/interview-page-shell'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -19,6 +20,7 @@ export default async function InterviewPage({
   if (!interview || interview.candidateId !== candidateId) notFound()
 
   const { candidate } = interview
+  const firefliesPrompt = await getActivePromptForInterviewType(interview.type)
 
   return (
     <InterviewPageShell
@@ -28,6 +30,8 @@ export default async function InterviewPage({
       subtitle={`${INTERVIEW_TYPE_LABELS[interview.type]} · ${interview.interviewer.name} · ${dateFormatter.format(interview.createdAt)}`}
       resume={candidate.resumes[0] ?? null}
       interviewId={interview.id}
+      type={interview.type}
+      hasFirefliesPrompt={firefliesPrompt !== null}
       status={interview.status}
       initialNotes={interview.notes ?? ''}
       initialFireflies={interview.firefliesSummary ?? ''}

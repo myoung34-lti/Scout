@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RecommendationPicker } from '@/components/interviews/recommendation-picker'
-import type { InterviewRecommendation, InterviewStatus } from '@prisma/client'
+import { CopyFirefliesPromptButton } from '@/components/interviews/copy-fireflies-prompt-button'
+import type { InterviewRecommendation, InterviewStatus, InterviewType } from '@prisma/client'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -35,6 +36,8 @@ export type InterviewWorkspaceHandle = {
 
 export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
   interviewId: string
+  type: InterviewType
+  hasFirefliesPrompt: boolean
   status: InterviewStatus
   initialNotes: string
   initialFireflies: string
@@ -44,6 +47,8 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
 }>(function InterviewWorkspace(
   {
     interviewId,
+    type,
+    hasFirefliesPrompt,
     status,
     initialNotes,
     initialFireflies,
@@ -211,7 +216,12 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
       </div>
 
       <div className="mb-4 space-y-2">
-        <label className="text-sm font-medium">Fireflies Summary</label>
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Fireflies Summary</label>
+          {hasFirefliesPrompt && (
+            <CopyFirefliesPromptButton type={type} />
+          )}
+        </div>
         <Textarea
           value={firefliesSummary}
           onChange={(e) => handleFirefliesChange(e.target.value)}

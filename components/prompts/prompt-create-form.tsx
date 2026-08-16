@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ALL_PROMPT_CATEGORIES, PROMPT_CATEGORY_LABELS } from '@/lib/prompt-category'
+import { ALL_INTERVIEW_TYPES, INTERVIEW_TYPE_LABELS } from '@/lib/interview'
 
 type PromptFormState = {
   errors?: Record<string, string[] | undefined>
@@ -40,6 +41,7 @@ export function PromptCreateForm() {
   const [keyTouched, setKeyTouched] = useState(false)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<string | undefined>(undefined)
+  const [interviewType, setInterviewType] = useState<string | undefined>(undefined)
   const [content, setContent] = useState('')
 
   const variables = extractPromptVariables(content)
@@ -112,6 +114,26 @@ export function PromptCreateForm() {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="interviewType">Interview Type</Label>
+        <Select name="interviewType" value={interviewType} onValueChange={setInterviewType}>
+          <SelectTrigger id="interviewType" className="w-full sm:w-64">
+            <SelectValue placeholder="Not linked to an interview type" />
+          </SelectTrigger>
+          <SelectContent>
+            {ALL_INTERVIEW_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {INTERVIEW_TYPE_LABELS[t]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          When set, this prompt&apos;s Copy Fireflies Prompt button appears on that interview
+          type&apos;s screen.
+        </p>
       </div>
 
       <div className="space-y-2">

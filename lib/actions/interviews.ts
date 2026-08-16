@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
 import { ALL_INTERVIEW_TYPES, ALL_RECOMMENDATIONS } from '@/lib/interview'
+import { getActivePromptForInterviewType } from '@/lib/prompts'
 import { TERMINAL_STAGES } from '@/lib/pipeline'
 import type { InterviewType, InterviewRecommendation } from '@prisma/client'
 
@@ -61,6 +62,24 @@ export async function updateInterviewDraft(
   await requireSession()
 
   try {
+    // Whenever the Fireflies summary changes, record which PromptVersion is
+    // current right now for this interview's type — so we can later trace
+    // which prompt produced this particular summary, without duplicating
+    // the prompt text itself onto the Interview.
+    let firefliesPromptVersionId: string | null | undefined
+    if (data.firefliesSummary !== undefined) {
+      if (data.firefliesSummary.trim() === '') {
+        firefliesPromptVersionId = null
+      } else {
+        const interview = await prisma.interview.findUniqueOrThrow({
+          where: { id: interviewId },
+          select: { type: true },
+        })
+        const prompt = await getActivePromptForInterviewType(interview.type)
+        firefliesPromptVersionId = prompt?.currentVersion?.id ?? null
+      }
+    }
+
     await prisma.interview.update({
       where: { id: interviewId },
       data: {
@@ -69,6 +88,7 @@ export async function updateInterviewDraft(
         ...(data.applicationId !== undefined
           ? { applicationId: data.applicationId }
           : {}),
+        ...(firefliesPromptVersionId !== undefined ? { firefliesPromptVersionId } : {}),
       },
     })
     return { ok: true }

@@ -232,21 +232,26 @@ model ActivityNote {
 // strong candidate with no open application at all. applicationId is an
 // optional cross-reference, never a requirement.
 model Interview {
-  id               String                   @id @default(cuid())
-  candidateId      String
-  applicationId    String?
-  interviewerId    String                   @db.Uuid
-  type             InterviewType
-  status           InterviewStatus          @default(DRAFT)
-  notes            String?
-  firefliesSummary String?
-  recommendation   InterviewRecommendation?
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-  completedAt      DateTime?
-  candidate        Candidate                @relation(fields: [candidateId], references: [id])
-  application      Application?             @relation(fields: [applicationId], references: [id])
-  interviewer      User                     @relation(fields: [interviewerId], references: [id])
+  id                       String                   @id @default(cuid())
+  candidateId              String
+  applicationId            String?
+  interviewerId            String                   @db.Uuid
+  type                     InterviewType
+  status                   InterviewStatus          @default(DRAFT)
+  notes                    String?
+  firefliesSummary         String?
+  // Which PromptVersion was current when firefliesSummary was last saved —
+  // lets us trace which prompt produced a given summary later, without
+  // duplicating the prompt text itself into the Interview record.
+  firefliesPromptVersionId String?
+  recommendation           InterviewRecommendation?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  completedAt              DateTime?
+  candidate                Candidate                @relation(fields: [candidateId], references: [id])
+  application              Application?             @relation(fields: [applicationId], references: [id])
+  interviewer              User                     @relation(fields: [interviewerId], references: [id])
+  firefliesPromptVersion   PromptVersion?           @relation(fields: [firefliesPromptVersionId], references: [id])
 
   @@index([candidateId, createdAt])
 }
@@ -268,6 +273,11 @@ model Prompt {
   name             String
   description      String?
   category         PromptCategory
+  // Optional: which interview type's Fireflies-summary prompt this is.
+  // Not DB-enforced to be unique per type — if two active prompts somehow
+  // claim the same type, the most recently updated one wins (see
+  // getActivePromptForInterviewType in lib/prompts.ts).
+  interviewType    InterviewType?
   isActive         Boolean         @default(true)
   // Points at whichever PromptVersion is currently live. A direct pointer
   // (rather than an isCurrent flag on PromptVersion) makes "which version is
@@ -284,21 +294,23 @@ model Prompt {
   versions         PromptVersion[] @relation("PromptVersions")
 
   @@index([category])
+  @@index([interviewType])
 }
 
 // Immutable history — created once, never edited or deleted. Editing a
 // prompt always creates a new row and repoints Prompt.currentVersionId;
 // restoring an old version copies its content into a new row the same way.
 model PromptVersion {
-  id          String   @id @default(cuid())
-  promptId    String
-  version     Int
-  content     String   @db.Text
-  createdAt   DateTime @default(now())
-  createdById String   @db.Uuid
-  prompt      Prompt   @relation("PromptVersions", fields: [promptId], references: [id])
-  createdBy   User     @relation("PromptVersionCreatedBy", fields: [createdById], references: [id])
-  currentFor  Prompt?  @relation("PromptCurrentVersion")
+  id                     String      @id @default(cuid())
+  promptId               String
+  version                Int
+  content                String      @db.Text
+  createdAt              DateTime    @default(now())
+  createdById            String      @db.Uuid
+  prompt                 Prompt      @relation("PromptVersions", fields: [promptId], references: [id])
+  createdBy              User        @relation("PromptVersionCreatedBy", fields: [createdById], references: [id])
+  currentFor             Prompt?     @relation("PromptCurrentVersion")
+  firefliesForInterviews Interview[]
 
   @@unique([promptId, version])
   @@index([promptId, createdAt])

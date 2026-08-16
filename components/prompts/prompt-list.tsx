@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { PROMPT_CATEGORY_LABELS } from '@/lib/prompt-category'
+import { INTERVIEW_TYPE_LABELS } from '@/lib/interview'
 import type { Prompt, PromptVersion } from '@prisma/client'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
@@ -27,9 +28,14 @@ export function PromptList({ prompts }: { prompts: PromptWithVersion[] }) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold">{prompt.name}</h2>
-              <Badge variant="outline" className="mt-1">
-                {PROMPT_CATEGORY_LABELS[prompt.category]}
-              </Badge>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <Badge variant="outline">{PROMPT_CATEGORY_LABELS[prompt.category]}</Badge>
+                {prompt.interviewType && (
+                  <Badge variant="outline">
+                    Fireflies: {INTERVIEW_TYPE_LABELS[prompt.interviewType]}
+                  </Badge>
+                )}
+              </div>
             </div>
             <Badge variant={prompt.isActive ? 'default' : 'secondary'} className="shrink-0">
               {prompt.isActive ? 'Active' : 'Inactive'}

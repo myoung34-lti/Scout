@@ -27,6 +27,7 @@ export const INTERVIEW_STAGE_FOR_TYPE: Record<InterviewType, PipelineStage> = {
   CLIENT: 'CLIENT_INTERVIEW',
 }
 
+
 export const RECOMMENDATION_LABELS: Record<InterviewRecommendation, string> = {
   STRONG_NO: 'Strong No',
   NO: 'No',

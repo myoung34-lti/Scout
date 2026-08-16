@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ALL_PROMPT_CATEGORIES, PROMPT_CATEGORY_LABELS } from '@/lib/prompt-category'
+import { ALL_INTERVIEW_TYPES, INTERVIEW_TYPE_LABELS } from '@/lib/interview'
 import { EditKeyDialog } from '@/components/prompts/edit-key-dialog'
 import { VersionHistoryDialog } from '@/components/prompts/version-history-dialog'
 import type { Prompt, PromptVersion, User } from '@prisma/client'
@@ -46,6 +47,9 @@ export function PromptEditor({
   const [name, setName] = useState(prompt.name)
   const [description, setDescription] = useState(prompt.description ?? '')
   const [category, setCategory] = useState<string>(prompt.category)
+  const [interviewType, setInterviewType] = useState<string | undefined>(
+    prompt.interviewType ?? undefined
+  )
   const [content, setContent] = useState(prompt.currentVersion?.content ?? '')
   const [isActive, setIsActive] = useState(prompt.isActive)
   const [activating, startActivating] = useTransition()
@@ -104,6 +108,26 @@ export function PromptEditor({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="interviewType">Interview Type</Label>
+          <Select name="interviewType" value={interviewType} onValueChange={setInterviewType}>
+            <SelectTrigger id="interviewType" className="w-full sm:w-64">
+              <SelectValue placeholder="Not linked to an interview type" />
+            </SelectTrigger>
+            <SelectContent>
+              {ALL_INTERVIEW_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {INTERVIEW_TYPE_LABELS[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            When set, this prompt&apos;s Copy Fireflies Prompt button appears on that interview
+            type&apos;s screen.
+          </p>
         </div>
 
         <div className="space-y-2">

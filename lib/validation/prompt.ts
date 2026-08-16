@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ALL_PROMPT_CATEGORIES } from '@/lib/prompt-category'
+import { ALL_INTERVIEW_TYPES } from '@/lib/interview'
 
 // Stable, code-referenceable keys: lowercase snake_case, must start with a
 // letter. Mirrors the style of the examples the key is meant to replace
@@ -19,6 +20,12 @@ export const promptSchema = z.object({
     .optional()
     .transform((v) => (v === '' ? undefined : v)),
   category: z.enum(ALL_PROMPT_CATEGORIES, { error: 'Select a category' }),
+  // Resolves to a concrete value (never undefined) so clearing the field in
+  // the editor actually persists as null instead of being silently ignored.
+  interviewType: z.preprocess(
+    (v) => (v === '' || v == null ? null : v),
+    z.enum(ALL_INTERVIEW_TYPES).nullable()
+  ),
   content: z.string().trim().min(1, 'Prompt content is required'),
 })
 

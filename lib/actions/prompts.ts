@@ -4,8 +4,35 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
+import { getActivePromptForInterviewType } from '@/lib/prompts'
 import { promptSchema } from '@/lib/validation/prompt'
-import type { PromptCategory } from '@prisma/client'
+import type { PromptCategory, InterviewType } from '@prisma/client'
+
+export type FirefliesPrompt = {
+  versionId: string
+  name: string
+  version: number
+  content: string
+}
+
+// Called directly from the interview screen's Copy Fireflies Prompt
+// button — always re-fetches so the copied content reflects whatever is
+// current at click time, not whatever was current when the page loaded.
+export async function getFirefliesPromptForType(
+  type: InterviewType
+): Promise<FirefliesPrompt | null> {
+  await requireSession()
+
+  const prompt = await getActivePromptForInterviewType(type)
+  if (!prompt) return null
+
+  return {
+    versionId: prompt.currentVersion!.id,
+    name: prompt.name,
+    version: prompt.currentVersion!.version,
+    content: prompt.currentVersion!.content,
+  }
+}
 
 export type PromptSearchFilters = {
   query?: string
@@ -69,6 +96,7 @@ export async function createPrompt(
     name: formData.get('name'),
     description: formData.get('description'),
     category: formData.get('category'),
+    interviewType: formData.get('interviewType'),
     content: formData.get('content'),
   })
 
@@ -84,7 +112,7 @@ export async function createPrompt(
     return { errors: { key: ['That key is already in use'] } }
   }
 
-  const { key, name, description, category, content } = parsed.data
+  const { key, name, description, category, interviewType, content } = parsed.data
 
   const prompt = await prisma.$transaction(async (tx) => {
     const created = await tx.prompt.create({
@@ -93,6 +121,7 @@ export async function createPrompt(
         name,
         description,
         category,
+        interviewType,
         createdById: user.id,
         updatedById: user.id,
       },
@@ -123,6 +152,7 @@ export async function saveEditedPrompt(
       name: formData.get('name'),
       description: formData.get('description'),
       category: formData.get('category'),
+      interviewType: formData.get('interviewType'),
       content: formData.get('content'),
     })
 
@@ -130,7 +160,7 @@ export async function saveEditedPrompt(
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
-  const { name, description, category, content } = parsed.data
+  const { name, description, category, interviewType, content } = parsed.data
 
   const current = await prisma.prompt.findUniqueOrThrow({
     where: { id: promptId },
@@ -148,6 +178,7 @@ export async function saveEditedPrompt(
         name,
         description,
         category,
+        interviewType,
         currentVersionId: version.id,
         updatedById: user.id,
       },
@@ -219,6 +250,7 @@ export async function duplicatePrompt(promptId: string) {
         name: `${source.name} (Copy)`,
         description: source.description,
         category: source.category,
+        interviewType: source.interviewType,
         isActive: false,
         createdById: user.id,
         updatedById: user.id,

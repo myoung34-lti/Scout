@@ -10,7 +10,7 @@ import {
   InterviewWorkspace,
   type InterviewWorkspaceHandle,
 } from '@/components/interviews/interview-workspace'
-import type { Resume, InterviewRecommendation, InterviewStatus } from '@prisma/client'
+import type { Resume, InterviewRecommendation, InterviewStatus, InterviewType } from '@prisma/client'
 
 export function InterviewPageShell({
   candidateId,
@@ -19,6 +19,8 @@ export function InterviewPageShell({
   subtitle,
   resume,
   interviewId,
+  type,
+  hasFirefliesPrompt,
   status,
   initialNotes,
   initialFireflies,
@@ -32,6 +34,8 @@ export function InterviewPageShell({
   subtitle: string
   resume: Resume | null
   interviewId: string
+  type: InterviewType
+  hasFirefliesPrompt: boolean
   status: InterviewStatus
   initialNotes: string
   initialFireflies: string
@@ -75,6 +79,8 @@ export function InterviewPageShell({
         <InterviewWorkspace
           ref={workspaceRef}
           interviewId={interviewId}
+          type={type}
+          hasFirefliesPrompt={hasFirefliesPrompt}
           status={status}
           initialNotes={initialNotes}
           initialFireflies={initialFireflies}
