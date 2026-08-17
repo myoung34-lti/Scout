@@ -38,10 +38,7 @@ function readJobFormData(formData: FormData) {
     location: formData.get('location'),
     isRemote: formData.get('isRemote'),
     isHybrid: formData.get('isHybrid'),
-    whoWereLookingFor: formData.get('whoWereLookingFor'),
-    primaryResponsibilities: formData.get('primaryResponsibilities'),
-    mustHaves: formData.get('mustHaves'),
-    otherInformation: formData.get('otherInformation'),
+    description: formData.get('description'),
     status: formData.get('status'),
   }
 }

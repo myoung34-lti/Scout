@@ -19,6 +19,7 @@ export const REJECTION_REASON_LABELS: Record<RejectionReason, string> = {
   LACK_OF_TECHNICAL_SKILLS: 'Lack of Technical Skills',
   POSITION_FILLED: 'Position Filled',
   POSITION_CLOSED: 'Position Closed',
+  ACCEPTED_ANOTHER_OFFER: 'Accepted Another Offer',
 }
 
 export const ALL_REJECTION_REASONS = [
@@ -27,6 +28,7 @@ export const ALL_REJECTION_REASONS = [
   'LACK_OF_TECHNICAL_SKILLS',
   'POSITION_FILLED',
   'POSITION_CLOSED',
+  'ACCEPTED_ANOTHER_OFFER',
 ] as const satisfies readonly RejectionReason[]
 
 // Active, in-order funnel stages shown as Kanban columns.

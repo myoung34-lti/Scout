@@ -55,51 +55,14 @@ export default async function JobDetailPage({
 
       <PipelineBoard applications={applications} />
 
-      <div className="space-y-5 rounded-lg border bg-background p-4">
-        {job.whoWereLookingFor && (
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
-              Who We&apos;re Looking For
-            </h2>
-            <p className="whitespace-pre-wrap">{job.whoWereLookingFor}</p>
-          </div>
-        )}
-
-        {job.primaryResponsibilities.length > 0 && (
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
-              Primary Responsibilities
-            </h2>
-            <ul className="list-disc space-y-1 pl-5">
-              {job.primaryResponsibilities.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {job.mustHaves.length > 0 && (
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
-              Some Must-Haves
-            </h2>
-            <ul className="list-disc space-y-1 pl-5">
-              {job.mustHaves.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {job.otherInformation && (
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
-              Other Information
-            </h2>
-            <p className="whitespace-pre-wrap">{job.otherInformation}</p>
-          </div>
-        )}
-      </div>
+      {job.description && (
+        <div className="rounded-lg border bg-background p-4">
+          <h2 className="mb-2 text-sm font-medium text-muted-foreground">
+            Description
+          </h2>
+          <p className="whitespace-pre-wrap">{job.description}</p>
+        </div>
+      )}
     </div>
   )
 }

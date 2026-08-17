@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
-import { REJECTION_REASON_LABELS } from '@/lib/pipeline'
+import { REJECTION_REASON_LABELS, STAGE_LABELS } from '@/lib/pipeline'
 import type { PipelineStage, RejectionReason } from '@prisma/client'
 
 const candidateWithTags = {
@@ -79,6 +79,57 @@ export async function transitionStage(
           }),
         ]
       : []),
+  ])
+
+  revalidatePath(`/jobs/${application.jobId}`)
+  revalidatePath('/pipeline')
+  revalidatePath(`/candidates/${application.candidateId}`)
+}
+
+// Reactivates a rejected application — restores whichever stage it was in
+// right before rejection (from the StageHistory row rejection itself wrote),
+// falling back to Applied if that's somehow unavailable.
+export async function revertRejection(applicationId: string) {
+  const user = await requireSession()
+
+  const application = await prisma.application.findUniqueOrThrow({
+    where: { id: applicationId },
+    include: { job: true },
+  })
+
+  if (application.stage !== 'REJECTED') return
+
+  const lastRejection = await prisma.stageHistory.findFirst({
+    where: { applicationId, toStage: 'REJECTED' },
+    orderBy: { changedAt: 'desc' },
+  })
+  const restoredStage = lastRejection?.fromStage ?? 'APPLIED'
+
+  await prisma.$transaction([
+    prisma.application.update({
+      where: { id: applicationId },
+      data: {
+        stage: restoredStage,
+        rejectionReason: null,
+        rejectedAt: null,
+      },
+    }),
+    prisma.stageHistory.create({
+      data: {
+        applicationId,
+        fromStage: 'REJECTED',
+        toStage: restoredStage,
+        changedById: user.id,
+      },
+    }),
+    prisma.activityNote.create({
+      data: {
+        candidateId: application.candidateId,
+        applicationId,
+        authorId: user.id,
+        body: `Reactivated for ${application.job.internalName} — moved back to ${STAGE_LABELS[restoredStage]}`,
+      },
+    }),
   ])
 
   revalidatePath(`/jobs/${application.jobId}`)

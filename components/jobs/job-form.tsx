@@ -123,54 +123,15 @@ export function JobForm({
         </div>
       </div>
 
-      <div className="space-y-5 rounded-lg border p-4">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          Description
-        </h2>
-
-        <div className="space-y-2">
-          <Label htmlFor="whoWereLookingFor">Who We&apos;re Looking For</Label>
-          <Textarea
-            id="whoWereLookingFor"
-            name="whoWereLookingFor"
-            rows={3}
-            defaultValue={defaultValues?.whoWereLookingFor ?? undefined}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="primaryResponsibilities">
-            Primary Responsibilities
-          </Label>
-          <Textarea
-            id="primaryResponsibilities"
-            name="primaryResponsibilities"
-            rows={5}
-            placeholder="One item per line"
-            defaultValue={defaultValues?.primaryResponsibilities?.join('\n')}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="mustHaves">Some Must-Haves</Label>
-          <Textarea
-            id="mustHaves"
-            name="mustHaves"
-            rows={5}
-            placeholder="One item per line"
-            defaultValue={defaultValues?.mustHaves?.join('\n')}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="otherInformation">Other Information</Label>
-          <Textarea
-            id="otherInformation"
-            name="otherInformation"
-            rows={3}
-            defaultValue={defaultValues?.otherInformation ?? undefined}
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          name="description"
+          rows={12}
+          className="field-sizing-fixed resize-none overflow-y-auto"
+          defaultValue={defaultValues?.description ?? undefined}
+        />
       </div>
 
       <Button type="submit" disabled={pending}>

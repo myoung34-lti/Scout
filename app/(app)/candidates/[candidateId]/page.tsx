@@ -240,6 +240,7 @@ export default async function CandidateProfilePage({
               candidateId={candidate.id}
               notes={candidate.notes}
               interviews={candidate.interviews}
+              applications={candidate.applications}
             />
           </div>
         </div>

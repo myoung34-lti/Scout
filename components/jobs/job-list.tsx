@@ -54,9 +54,9 @@ export function JobList({ jobs }: { jobs: JobWithCount[] }) {
             </div>
           )}
 
-          {job.whoWereLookingFor && (
+          {job.description && (
             <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-              {job.whoWereLookingFor}
+              {job.description}
             </p>
           )}
 

@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AddNoteDialog } from '@/components/candidates/add-note-dialog'
 import { AddInterviewMenu } from '@/components/candidates/add-interview-menu'
+import { RevertRejectionDialog } from '@/components/candidates/revert-rejection-dialog'
 import { STAGE_LABELS } from '@/lib/pipeline'
 import {
   INTERVIEW_TYPE_LABELS,
@@ -90,11 +91,19 @@ const NOTE_KIND_STYLES: Record<
   note: { icon: MessageSquare, iconClass: 'bg-muted text-muted-foreground' },
 }
 
-function NoteItem({ note }: { note: NoteWithAuthor }) {
+function NoteItem({
+  note,
+  rejectedApplicationIds,
+}: {
+  note: NoteWithAuthor
+  rejectedApplicationIds: Set<string>
+}) {
   const kind = getNoteKind(note)
   const { icon: Icon, iconClass } = NOTE_KIND_STYLES[kind]
   const collapsible = kind === 'interview'
   const [expanded, setExpanded] = useState(!collapsible)
+  const canRevert =
+    kind === 'rejected' && !!note.applicationId && rejectedApplicationIds.has(note.applicationId)
 
   const title =
     kind === 'interview' && note.stage
@@ -139,6 +148,11 @@ function NoteItem({ note }: { note: NoteWithAuthor }) {
         </p>
         {showBody && expanded && (
           <p className="mt-1 whitespace-pre-wrap text-sm">{note.body}</p>
+        )}
+        {canRevert && (
+          <div className="mt-1">
+            <RevertRejectionDialog applicationId={note.applicationId!} />
+          </div>
         )}
       </div>
     </li>
@@ -210,12 +224,17 @@ export function ActivityFeed({
   candidateId,
   notes,
   interviews,
+  applications,
 }: {
   candidateId: string
   notes: NoteWithAuthor[]
   interviews: InterviewWithInterviewer[]
+  applications: { id: string; stage: string }[]
 }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const rejectedApplicationIds = new Set(
+    applications.filter((a) => a.stage === 'REJECTED').map((a) => a.id)
+  )
 
   const entries: Entry[] = [
     ...notes.map((n) => ({ type: 'note' as const, createdAt: n.createdAt, data: n })),
@@ -239,7 +258,11 @@ export function ActivityFeed({
         <ul className="relative space-y-4 before:absolute before:top-2 before:bottom-2 before:left-[17px] before:w-px before:bg-border">
           {visibleEntries.map((entry) =>
             entry.type === 'note' ? (
-              <NoteItem key={`note-${entry.data.id}`} note={entry.data} />
+              <NoteItem
+                key={`note-${entry.data.id}`}
+                note={entry.data}
+                rejectedApplicationIds={rejectedApplicationIds}
+              />
             ) : (
               <InterviewItem
                 key={`interview-${entry.data.id}`}

@@ -6,16 +6,6 @@ const optionalText = z
   .optional()
   .transform((v) => (v === '' ? undefined : v))
 
-const bulletList = z
-  .string()
-  .optional()
-  .transform((v) =>
-    (v ?? '')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-  )
-
 const checkbox = z
   .union([z.literal('on'), z.undefined(), z.null()])
   .transform((v) => v === 'on')
@@ -26,10 +16,7 @@ export const jobSchema = z.object({
   location: z.string().trim().min(1, 'Location is required'),
   isRemote: checkbox,
   isHybrid: checkbox,
-  whoWereLookingFor: optionalText,
-  primaryResponsibilities: bulletList,
-  mustHaves: bulletList,
-  otherInformation: optionalText,
+  description: optionalText,
   status: z.enum(['OPEN', 'CLOSED', 'ON_HOLD']),
 })
 
