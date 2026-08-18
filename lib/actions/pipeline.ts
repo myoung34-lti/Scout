@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
-import { REJECTION_REASON_LABELS, STAGE_LABELS } from '@/lib/pipeline'
+import { STAGE_LABELS, rejectionReasonText } from '@/lib/pipeline'
 import type { PipelineStage, RejectionReason } from '@prisma/client'
 
 const candidateWithTags = {
@@ -34,7 +34,8 @@ export async function getAllBoardApplications() {
 export async function transitionStage(
   applicationId: string,
   toStage: PipelineStage,
-  rejectionReason?: RejectionReason
+  rejectionReason?: RejectionReason,
+  customRejectionReason?: string
 ) {
   const user = await requireSession()
 
@@ -51,6 +52,10 @@ export async function transitionStage(
       data: {
         stage: toStage,
         rejectionReason: toStage === 'REJECTED' ? (rejectionReason ?? null) : null,
+        customRejectionReason:
+          toStage === 'REJECTED' && rejectionReason === 'OTHER'
+            ? (customRejectionReason ?? null)
+            : null,
         ...(toStage === 'HIRED' ? { hiredAt: new Date() } : {}),
         ...(toStage === 'REJECTED' ? { rejectedAt: new Date() } : {}),
       },
@@ -72,7 +77,7 @@ export async function transitionStage(
               authorId: user.id,
               body: `Rejected from ${application.job.internalName}${
                 rejectionReason
-                  ? ` (${REJECTION_REASON_LABELS[rejectionReason]})`
+                  ? ` (${rejectionReasonText(rejectionReason, customRejectionReason ?? null)})`
                   : ''
               }`,
             },
@@ -111,6 +116,7 @@ export async function revertRejection(applicationId: string) {
       data: {
         stage: restoredStage,
         rejectionReason: null,
+        customRejectionReason: null,
         rejectedAt: null,
       },
     }),

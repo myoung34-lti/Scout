@@ -19,7 +19,6 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { X } from 'lucide-react'
 import type { Job, User } from '@prisma/client'
-import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
 import { ALL_CANDIDATE_SOURCES, CANDIDATE_SOURCE_LABELS } from '@/lib/candidate-source'
 import { ACTIVE_STAGES, STAGE_LABELS } from '@/lib/pipeline'
 import { FileInput } from '@/components/ui/file-input'
@@ -54,7 +53,6 @@ export function CandidateForm({
   const [stage, setStage] = useState<string | undefined>(undefined)
   const [addToTalentPool, setAddToTalentPool] = useState(false)
   const [ownerId, setOwnerId] = useState<string | undefined>(currentUserId)
-  const [candidateType, setCandidateType] = useState<string | undefined>(undefined)
   const [source, setSource] = useState<string | undefined>(undefined)
   const [duplicate, setDuplicate] = useState<DuplicateCandidate | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -291,27 +289,6 @@ export function CandidateForm({
 
       <div className="space-y-4 rounded-lg border p-4">
         <div className="grid gap-5 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="candidateType">Type</Label>
-            <Select name="candidateType" value={candidateType} onValueChange={setCandidateType}>
-              <SelectTrigger id="candidateType" className="w-full">
-                <SelectValue placeholder="Select a type" />
-              </SelectTrigger>
-              <SelectContent>
-                {ALL_CANDIDATE_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {CANDIDATE_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {state?.errors?.candidateType && (
-              <p className="text-sm text-destructive">
-                {state.errors.candidateType[0]}
-              </p>
-            )}
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="source">Source</Label>
             <Select name="source" value={source} onValueChange={setSource}>

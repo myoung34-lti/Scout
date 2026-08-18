@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -25,14 +26,23 @@ export function RejectionReasonDialog({
   onResolve,
 }: {
   open: boolean
-  onResolve: (reason?: RejectionReason) => void
+  onResolve: (reason?: RejectionReason, customReason?: string) => void
 }) {
   const [reason, setReason] = useState<RejectionReason | undefined>(undefined)
+  const [customReason, setCustomReason] = useState('')
+
+  function reset() {
+    setReason(undefined)
+    setCustomReason('')
+  }
 
   function resolve() {
-    onResolve(reason)
-    setReason(undefined)
+    onResolve(reason, reason === 'OTHER' ? customReason.trim() : undefined)
+    reset()
   }
+
+  const isOther = reason === 'OTHER'
+  const canSave = !isOther || customReason.trim().length > 0
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && resolve()}>
@@ -60,11 +70,20 @@ export function RejectionReasonDialog({
           </SelectContent>
         </Select>
 
+        {isOther && (
+          <Input
+            value={customReason}
+            onChange={(e) => setCustomReason(e.target.value)}
+            placeholder="Describe the reason…"
+            autoFocus
+          />
+        )}
+
         <DialogFooter className="mt-4 gap-2">
           <Button variant="outline" onClick={resolve}>
             Skip
           </Button>
-          <Button onClick={resolve} disabled={!reason}>
+          <Button onClick={resolve} disabled={!reason || !canSave}>
             Save reason
           </Button>
         </DialogFooter>

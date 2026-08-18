@@ -13,7 +13,10 @@ const checkbox = z
 export const jobSchema = z.object({
   internalName: z.string().trim().min(1, 'Internal name is required'),
   externalName: z.string().trim().min(1, 'External name is required'),
+  clientName: optionalText,
+  teamName: optionalText,
   location: z.string().trim().min(1, 'Location is required'),
+  isOnsite: checkbox,
   isRemote: checkbox,
   isHybrid: checkbox,
   description: optionalText,

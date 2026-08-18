@@ -29,7 +29,10 @@ export async function importJob(
       greenhouseJobId: mapped.greenhouseJobId,
       internalName: mapped.internalName,
       externalName: mapped.externalName,
-      location: 'LTI',
+      // Greenhouse has no reliable per-job location data for LTI jobs (its
+      // offices are organizational, not physical, and job_posts don't carry
+      // one either) — leave blank for a human to fill in via the Job form.
+      location: '',
       status: mapped.status,
       description: mapped.description,
       createdAt: mapped.createdAt,
@@ -138,7 +141,46 @@ export async function importApplication(
       return null
     }
 
-    const stage = mapping.kind === 'stage' ? mapping.stage : mapping.proxyStage
+    // Holding Pattern never creates (or updates) a job-tied Application —
+    // Greenhouse has effectively stopped tracking these candidates
+    // precisely, so in Scout they only ever surface via the Talent Pool,
+    // never as an "in process" pipeline entry on any job. Checked on every
+    // run (not just once) so a candidate who drifts into Holding Pattern
+    // after their first import still gets caught — guarded on current
+    // inTalentPool state so we never fight a recruiter who deliberately
+    // removed someone from the pool in Scout since the last run.
+    if (mapping.kind === 'holding_pattern') {
+      const candidate = await prisma.candidate.findUniqueOrThrow({
+        where: { id: scoutCandidateId },
+        select: { inTalentPool: true },
+      })
+      if (!candidate.inTalentPool) {
+        await prisma.candidate.update({
+          where: { id: scoutCandidateId },
+          data: {
+            inTalentPool: true,
+            talentPoolAddedAt: new Date(ghApplication.last_activity_at),
+            talentPoolAddedById: actingUserId,
+          },
+        })
+        await prisma.activityNote.create({
+          data: {
+            candidateId: scoutCandidateId,
+            authorId: actingUserId,
+            body: `Greenhouse status: Holding Pattern for ${mapping.originalJobName} (imported from Greenhouse) — added to Talent Pool`,
+          },
+        })
+      }
+      log.push({
+        entity: 'application',
+        greenhouseId: ghApplication.id.toString(),
+        action: 'skipped',
+        detail: 'Holding Pattern — routed to Talent Pool only, no job application created',
+      })
+      return null
+    }
+
+    const stage = mapping.stage
     const existing = await prisma.application.findUnique({
       where: { greenhouseApplicationId: ghApplication.id },
     })
@@ -181,36 +223,6 @@ export async function importApplication(
           body: `Imported from Greenhouse — application to ${jobName}`,
         },
       })
-    }
-
-    // Checked on every run (not just !existing) — a candidate can transition
-    // into Holding Pattern after their application was already imported, and
-    // a rerun should still catch that. Guarded on current inTalentPool state
-    // so we never fight a recruiter who deliberately removed someone from
-    // the pool in Scout since the last run.
-    if (mapping.kind === 'holding_pattern') {
-      const candidate = await prisma.candidate.findUniqueOrThrow({
-        where: { id: scoutCandidateId },
-        select: { inTalentPool: true },
-      })
-      if (!candidate.inTalentPool) {
-        await prisma.candidate.update({
-          where: { id: scoutCandidateId },
-          data: {
-            inTalentPool: true,
-            talentPoolAddedAt: new Date(ghApplication.last_activity_at),
-            talentPoolAddedById: actingUserId,
-          },
-        })
-        await prisma.activityNote.create({
-          data: {
-            candidateId: scoutCandidateId,
-            applicationId: application.id,
-            authorId: actingUserId,
-            body: `Greenhouse status: Holding Pattern for ${mapping.originalJobName} (imported from Greenhouse) — added to Talent Pool`,
-          },
-        })
-      }
     }
 
     return application.id

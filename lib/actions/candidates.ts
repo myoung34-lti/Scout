@@ -7,9 +7,8 @@ import { requireSession } from '@/lib/session'
 import { candidateSchema, candidateEditSchema } from '@/lib/validation/candidate'
 import { createApplication } from '@/lib/actions/applications'
 import { uploadResumeForCandidate } from '@/lib/actions/resumes'
-import { ALL_CANDIDATE_TYPES, CANDIDATE_TYPE_LABELS } from '@/lib/candidate-type'
 import { TERMINAL_STAGES } from '@/lib/pipeline'
-import type { CandidateType, PipelineStage } from '@prisma/client'
+import type { PipelineStage, Prisma } from '@prisma/client'
 
 export async function listCandidates() {
   await requireSession()
@@ -54,7 +53,7 @@ export async function updateCandidateProfile(
   _prevState: unknown,
   formData: FormData
 ) {
-  await requireSession()
+  const user = await requireSession()
 
   const parsed = candidateEditSchema.safeParse({
     firstName: formData.get('firstName'),
@@ -63,17 +62,98 @@ export async function updateCandidateProfile(
     phone: formData.get('phone'),
     linkedinUrl: formData.get('linkedinUrl'),
     currentCompany: formData.get('currentCompany'),
+    currentTitle: formData.get('currentTitle'),
     location: formData.get('location'),
+    source: formData.get('source'),
+    ownerId: formData.get('ownerId'),
   })
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
+  const skills = formData
+    .getAll('skills')
+    .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+
+  // Both resume-scraped and submitted together as one JSON blob + a number —
+  // malformed input is simply dropped rather than failing the whole save.
+  let workHistory: Prisma.InputJsonValue | undefined
+  const workHistoryRaw = formData.get('workHistory')
+  if (typeof workHistoryRaw === 'string' && workHistoryRaw.trim() !== '') {
+    try {
+      const value = JSON.parse(workHistoryRaw)
+      if (Array.isArray(value)) workHistory = value
+    } catch {
+      // ignore malformed input
+    }
+  }
+  const yearsExperienceRaw = formData.get('yearsExperience')
+  const yearsExperience =
+    typeof yearsExperienceRaw === 'string' && yearsExperienceRaw.trim() !== ''
+      ? Number(yearsExperienceRaw)
+      : undefined
+
+  const { ownerId, ...restData } = parsed.data
+
   await prisma.candidate.update({
     where: { id: candidateId },
-    data: parsed.data,
+    data: {
+      ...restData,
+      // Candidate has two relations to User (owner, talentPoolAddedBy), so
+      // Prisma won't accept the raw ownerId scalar directly here — it needs
+      // the relation-nested connect/disconnect form instead.
+      owner: ownerId ? { connect: { id: ownerId } } : { disconnect: true },
+      ...(workHistory !== undefined ? { workHistory } : {}),
+      ...(yearsExperience !== undefined && !Number.isNaN(yearsExperience)
+        ? { yearsExperience }
+        : {}),
+    },
   })
+
+  // Skills found via a resume scan are only ever added as Tags, never
+  // removed — a new resume can't silently erase a tag that came from
+  // somewhere else. Run concurrently rather than inside one interactive
+  // transaction — a resume with many skills was blowing past Prisma's 5s
+  // transaction timeout when each upsert pair ran sequentially on it.
+  await Promise.all(
+    skills.map(async (rawLabel) => {
+      const displayLabel = rawLabel.trim()
+      const label = displayLabel.toLowerCase()
+      const tag = await prisma.tag.upsert({
+        where: { label },
+        update: {},
+        create: { label, displayLabel },
+      })
+      await prisma.candidateTag.upsert({
+        where: { candidateId_tagId: { candidateId, tagId: tag.id } },
+        update: {},
+        create: { candidateId, tagId: tag.id },
+      })
+    })
+  )
+
+  if (skills.length > 0) {
+    await prisma.activityNote.create({
+      data: {
+        candidateId,
+        authorId: user.id,
+        body: `Added skills from resume scan: ${skills.join(', ')}`,
+      },
+    })
+  }
+
+  const resumeFile = formData.get('resume')
+  if (resumeFile instanceof File && resumeFile.size > 0) {
+    const result = await uploadResumeForCandidate(candidateId, resumeFile)
+    if (result?.error) {
+      revalidatePath(`/candidates/${candidateId}`)
+      revalidatePath('/candidates')
+      // The profile fields above were still saved — only the resume upload
+      // failed — so surface just that, rather than losing the rest of the edit.
+      return { errors: { resume: [result.error] } }
+    }
+  }
 
   revalidatePath(`/candidates/${candidateId}`)
   revalidatePath('/candidates')
@@ -105,40 +185,6 @@ export async function updateCandidateRating(
 
   await prisma.$transaction([
     prisma.candidate.update({ where: { id: candidateId }, data: { rating } }),
-    prisma.activityNote.create({
-      data: { candidateId, authorId: user.id, body },
-    }),
-  ])
-
-  revalidatePath(`/candidates/${candidateId}`)
-  revalidatePath('/candidates')
-  revalidatePath('/pipeline')
-  revalidatePath('/jobs/[jobId]', 'page')
-}
-
-export async function updateCandidateType(
-  candidateId: string,
-  candidateType: CandidateType
-) {
-  const user = await requireSession()
-
-  if (!ALL_CANDIDATE_TYPES.includes(candidateType)) {
-    throw new Error('Invalid type')
-  }
-
-  const candidate = await prisma.candidate.findUniqueOrThrow({
-    where: { id: candidateId },
-    select: { candidateType: true },
-  })
-
-  if (candidate.candidateType === candidateType) return
-
-  const body = candidate.candidateType
-    ? `Changed type from ${CANDIDATE_TYPE_LABELS[candidate.candidateType]} to ${CANDIDATE_TYPE_LABELS[candidateType]}`
-    : `Set type to ${CANDIDATE_TYPE_LABELS[candidateType]}`
-
-  await prisma.$transaction([
-    prisma.candidate.update({ where: { id: candidateId }, data: { candidateType } }),
     prisma.activityNote.create({
       data: { candidateId, authorId: user.id, body },
     }),
@@ -240,7 +286,6 @@ export async function createCandidate(
     phone: formData.get('phone'),
     linkedinUrl: formData.get('linkedinUrl'),
     currentCompany: formData.get('currentCompany'),
-    candidateType: formData.get('candidateType'),
     location: formData.get('location'),
     source: formData.get('source'),
     jobId: formData.get('jobId'),
@@ -296,25 +341,30 @@ export async function createCandidate(
       })
     }
 
-    // Skills pulled from the resume parser get attached the same way a
-    // manually-added tag would — no separate Skills model needed.
-    for (const rawLabel of skills) {
+    return candidate
+  })
+
+  // Skills pulled from the resume parser get attached the same way a
+  // manually-added tag would — no separate Skills model needed. Run
+  // concurrently, outside the transaction above — a resume with many
+  // skills upserted sequentially inside one interactive transaction was
+  // blowing past Prisma's 5s transaction timeout.
+  await Promise.all(
+    skills.map(async (rawLabel) => {
       const displayLabel = rawLabel.trim()
       const label = displayLabel.toLowerCase()
-      const tag = await tx.tag.upsert({
+      const tag = await prisma.tag.upsert({
         where: { label },
         update: {},
         create: { label, displayLabel },
       })
-      await tx.candidateTag.upsert({
+      await prisma.candidateTag.upsert({
         where: { candidateId_tagId: { candidateId: candidate.id, tagId: tag.id } },
         update: {},
         create: { candidateId: candidate.id, tagId: tag.id },
       })
-    }
-
-    return candidate
-  })
+    })
+  )
 
   const resumeFiles = formData
     .getAll('resume')

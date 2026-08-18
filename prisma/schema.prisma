@@ -3,22 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum JobStatus {
   OPEN
   CLOSED
   ON_HOLD
-}
-
-enum CandidateType {
-  SOFTWARE_ENGINEER
-  SYSTEMS_ENGINEER
-  ANALYST
-  INTERNAL
-  DEVOPS_ENGINEER
 }
 
 enum CandidateSource {
@@ -48,6 +41,11 @@ enum RejectionReason {
   POSITION_FILLED
   POSITION_CLOSED
   ACCEPTED_ANOTHER_OFFER
+  NOT_LOCAL
+  PREFER_REMOTE
+  // Free-text reason typed in at rejection time — see
+  // Application.customRejectionReason for the actual text.
+  OTHER
 }
 
 // Single value today — the Admin page is built to manage whichever roles
@@ -104,7 +102,10 @@ model Job {
   id              String        @id @default(cuid())
   internalName    String
   externalName    String
+  clientName      String?
+  teamName        String?
   location        String
+  isOnsite        Boolean       @default(false)
   isRemote        Boolean       @default(false)
   isHybrid        Boolean       @default(false)
   description     String?       @db.Text
@@ -126,7 +127,6 @@ model Candidate {
   linkedinUrl           String?
   currentCompany        String?
   currentTitle          String?
-  candidateType         CandidateType?
   source                CandidateSource?
   location              String?
   rating                Int?
@@ -137,6 +137,12 @@ model Candidate {
   talentPoolAddedById   String?          @db.Uuid
   talentPoolAddedBy     User?            @relation("TalentPoolAdder", fields: [talentPoolAddedById], references: [id])
   greenhouseCandidateId BigInt?          @unique
+  // Both resume-scraped — workHistory is a WorkHistoryEntry[] (see
+  // lib/actions/resume-parser.ts), wholesale-replaced on each scan rather
+  // than modeled relationally, since it's read-only derived data, not
+  // something anyone edits entry-by-entry in the app.
+  yearsExperience       Float?
+  workHistory           Json?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   applications          Application[]
@@ -170,6 +176,7 @@ model Application {
   jobId                   String
   stage                   PipelineStage    @default(APPLIED)
   rejectionReason         RejectionReason?
+  customRejectionReason   String?
   appliedAt               DateTime         @default(now())
   hiredAt                 DateTime?
   rejectedAt              DateTime?

@@ -43,9 +43,10 @@ export function PipelineBoard({
     applicationId: string,
     toStage: PipelineStage,
     previousStage: PipelineStage,
-    rejectionReason?: RejectionReason
+    rejectionReason?: RejectionReason,
+    customRejectionReason?: string
   ) {
-    transitionStage(applicationId, toStage, rejectionReason).catch(() => {
+    transitionStage(applicationId, toStage, rejectionReason, customRejectionReason).catch(() => {
       setItems((prev) =>
         prev.map((a) =>
           a.id === applicationId ? { ...a, stage: previousStage } : a
@@ -78,16 +79,22 @@ export function PipelineBoard({
     commitTransition(applicationId, toStage, previousStage)
   }
 
-  function handleRejectionResolved(reason?: RejectionReason) {
+  function handleRejectionResolved(reason?: RejectionReason, customReason?: string) {
     if (!pendingRejection) return
     const { applicationId, previousStage } = pendingRejection
     setPendingRejection(null)
     setItems((prev) =>
       prev.map((a) =>
-        a.id === applicationId ? { ...a, rejectionReason: reason ?? null } : a
+        a.id === applicationId
+          ? {
+              ...a,
+              rejectionReason: reason ?? null,
+              customRejectionReason: customReason ?? null,
+            }
+          : a
       )
     )
-    commitTransition(applicationId, 'REJECTED', previousStage, reason)
+    commitTransition(applicationId, 'REJECTED', previousStage, reason, customReason)
   }
 
   return (

@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ALL_STAGES, STAGE_LABELS } from '@/lib/pipeline'
-import { MultiSelectChips } from '@/components/candidates/multi-select-chips'
+import { ALL_STAGES, ACTIVE_STAGES, STAGE_LABELS } from '@/lib/pipeline'
 import { useFilterParams } from '@/lib/use-filter-params'
 
 const RATING_OPTIONS = [5, 4, 3, 2, 1]
@@ -89,14 +88,79 @@ export function CandidateSearchFilters({
   const jobId = searchParams.get('jobId') ?? 'ALL'
   const jobLocation = searchParams.get('jobLocation') ?? 'ALL'
   const minRating = searchParams.get('minRating') ?? 'ALL'
+  const pooled = searchParams.get('pooled') === '1'
+  const rated = searchParams.get('rated') === '1'
+
+  const isActiveChecked = ACTIVE_STAGES.every((s) => stages.includes(s))
+  const isRejectedChecked = stages.includes('REJECTED')
+
+  function toggleStageGroup(group: string[], checked: boolean) {
+    const withoutGroup = stages.filter((s) => !group.includes(s))
+    setMulti('stage', checked ? [...withoutGroup, ...group] : withoutGroup)
+  }
 
   return (
     <div className="space-y-4">
-      <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search candidates…"
-      />
+      <div className="flex items-center gap-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search candidates…"
+        />
+        <Button
+          variant="link"
+          size="sm"
+          onClick={clearAll}
+          className="shrink-0 px-0"
+        >
+          <RotateCcw />
+          Clear Filters
+        </Button>
+      </div>
+
+      <div className="space-y-2 rounded-lg border bg-background px-4 py-3">
+        <Label className="block text-xs text-muted-foreground">
+          Quick Filters
+        </Label>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={isActiveChecked}
+              onCheckedChange={(checked) =>
+                toggleStageGroup(ACTIVE_STAGES, checked === true)
+              }
+            />
+            Active
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={pooled}
+              onCheckedChange={(checked) =>
+                setSingle('pooled', checked === true ? '1' : undefined)
+              }
+            />
+            Talent Pool
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={rated}
+              onCheckedChange={(checked) =>
+                setSingle('rated', checked === true ? '1' : undefined)
+              }
+            />
+            Rated
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={isRejectedChecked}
+              onCheckedChange={(checked) =>
+                toggleStageGroup(['REJECTED'], checked === true)
+              }
+            />
+            Rejected
+          </label>
+        </div>
+      </div>
 
       <Accordion
         type="multiple"
@@ -106,16 +170,24 @@ export function CandidateSearchFilters({
         <AccordionItem value="stage">
           <AccordionTrigger>Stage</AccordionTrigger>
           <AccordionContent>
-            <MultiSelectChips
-              options={ALL_STAGES.map((s) => ({
-                value: s,
-                label: STAGE_LABELS[s],
-              }))}
-              values={stages}
-              onChange={(v) => setMulti('stage', v)}
-              placeholder="Add stage…"
-              showSelected={false}
-            />
+            <div className="flex flex-col gap-2">
+              {ALL_STAGES.map((s) => (
+                <label key={s} className="flex items-center gap-1.5 text-sm">
+                  <Checkbox
+                    checked={stages.includes(s)}
+                    onCheckedChange={(checked) =>
+                      setMulti(
+                        'stage',
+                        checked
+                          ? [...stages, s]
+                          : stages.filter((v) => v !== s)
+                      )
+                    }
+                  />
+                  {STAGE_LABELS[s]}
+                </label>
+              ))}
+            </div>
           </AccordionContent>
         </AccordionItem>
 
@@ -236,11 +308,6 @@ export function CandidateSearchFilters({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
-      <Button variant="link" size="sm" onClick={clearAll} className="px-0">
-        <RotateCcw />
-        Reset Filters
-      </Button>
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { STAGE_LABELS } from '@/lib/pipeline'
+import { ACTIVE_STAGES, STAGE_LABELS } from '@/lib/pipeline'
 import { useFilterParams } from '@/lib/use-filter-params'
 import type { PipelineStage } from '@prisma/client'
 
@@ -15,7 +15,7 @@ export function ActiveFilterPills({
   jobs: { id: string; internalName: string }[]
   tags: { id: string; displayLabel: string }[]
 }) {
-  const { searchParams, setSingle, removeOne } = useFilterParams()
+  const { searchParams, setSingle, setMulti, removeOne } = useFilterParams()
 
   const query = searchParams.get('q') ?? ''
   const stages = searchParams.getAll('stage')
@@ -24,6 +24,16 @@ export function ActiveFilterPills({
   const jobLocation = searchParams.get('jobLocation')
   const minRating = searchParams.get('minRating')
   const location = searchParams.get('location') ?? ''
+  const pooled = searchParams.get('pooled') === '1'
+  const rated = searchParams.get('rated') === '1'
+
+  // The Active checkbox adds all ACTIVE_STAGES at once — collapse them back
+  // into a single pill instead of showing all eight individually. Any other
+  // individually-picked stage (e.g. Hired, or Rejected) still gets its own.
+  const isActiveChecked = ACTIVE_STAGES.every((s) => stages.includes(s))
+  const remainingStages = isActiveChecked
+    ? stages.filter((s) => !ACTIVE_STAGES.includes(s as PipelineStage))
+    : stages
 
   type Pill = { key: string; label: string; onRemove: () => void }
   const pills: Pill[] = []
@@ -35,13 +45,34 @@ export function ActiveFilterPills({
       onRemove: () => setSingle('q', undefined),
     })
   }
-  stages.forEach((s) =>
+  if (isActiveChecked) {
+    pills.push({
+      key: 'stage-active',
+      label: 'Active',
+      onRemove: () => setMulti('stage', remainingStages),
+    })
+  }
+  remainingStages.forEach((s) =>
     pills.push({
       key: `stage-${s}`,
       label: STAGE_LABELS[s as PipelineStage],
       onRemove: () => removeOne('stage', s),
     })
   )
+  if (pooled) {
+    pills.push({
+      key: 'pooled',
+      label: 'Talent Pool',
+      onRemove: () => setSingle('pooled', undefined),
+    })
+  }
+  if (rated) {
+    pills.push({
+      key: 'rated',
+      label: 'Rated',
+      onRemove: () => setSingle('rated', undefined),
+    })
+  }
   if (jobId && jobId !== 'ALL') {
     const job = jobs.find((j) => j.id === jobId)
     pills.push({

@@ -72,6 +72,35 @@ export function JobForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
+          <Label htmlFor="clientName">Client name</Label>
+          <Input
+            id="clientName"
+            name="clientName"
+            defaultValue={defaultValues?.clientName ?? undefined}
+          />
+          {state?.errors?.clientName && (
+            <p className="text-sm text-destructive">
+              {state.errors.clientName[0]}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="teamName">Team name</Label>
+          <Input
+            id="teamName"
+            name="teamName"
+            defaultValue={defaultValues?.teamName ?? undefined}
+          />
+          {state?.errors?.teamName && (
+            <p className="text-sm text-destructive">
+              {state.errors.teamName[0]}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="space-y-2">
           <Label htmlFor="location">Location</Label>
           <Input
             id="location"
@@ -94,10 +123,10 @@ export function JobForm({
           <div className="flex items-center gap-4 pt-1">
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
-                name="isRemote"
-                defaultChecked={defaultValues?.isRemote}
+                name="isOnsite"
+                defaultChecked={defaultValues?.isOnsite}
               />
-              Remote
+              Onsite
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
@@ -105,6 +134,13 @@ export function JobForm({
                 defaultChecked={defaultValues?.isHybrid}
               />
               Hybrid
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                name="isRemote"
+                defaultChecked={defaultValues?.isRemote}
+              />
+              Remote
             </label>
           </div>
         </div>

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText, ArrowLeft } from 'lucide-react'
 import { getCandidate } from '@/lib/actions/candidates'
-import { STAGE_LABELS, TERMINAL_STAGES, REJECTION_REASON_LABELS } from '@/lib/pipeline'
+import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
 import { ResumeUploader } from '@/components/candidates/resume-uploader'
 import { CandidateRating } from '@/components/candidates/candidate-rating'
@@ -10,12 +10,14 @@ import { ActivityFeed } from '@/components/candidates/activity-feed'
 import { TagInput } from '@/components/candidates/tag-input'
 import { listTags } from '@/lib/actions/tags'
 import { listJobs } from '@/lib/actions/jobs'
-import { getCandidateDisplayTitle } from '@/lib/candidate-type'
-import { CandidateTypeSelect } from '@/components/candidates/candidate-type-select'
+import { listUsers } from '@/lib/actions/users'
+import { getCandidateDisplayTitle, findRelevantApplication } from '@/lib/candidate-type'
 import { AddToJobDialog } from '@/components/candidates/add-to-job-dialog'
 import { TalentPoolToggle } from '@/components/candidates/talent-pool-toggle'
 import { ApplicationPipelineStepper } from '@/components/candidates/application-pipeline-stepper'
 import { EditCandidateDialog } from '@/components/candidates/edit-candidate-dialog'
+import { ExperienceCard } from '@/components/candidates/experience-card'
+import type { WorkHistoryEntry } from '@/lib/actions/resume-parser'
 import { INTERVIEW_STAGE_FOR_TYPE } from '@/lib/interview'
 import type {
   PipelineStage,
@@ -60,10 +62,11 @@ export default async function CandidateProfilePage({
   params: Promise<{ candidateId: string }>
 }) {
   const { candidateId } = await params
-  const [candidate, allTags, allJobs] = await Promise.all([
+  const [candidate, allTags, allJobs, allUsers] = await Promise.all([
     getCandidate(candidateId),
     listTags(),
     listJobs(),
+    listUsers(),
   ])
 
   if (!candidate) notFound()
@@ -77,9 +80,14 @@ export default async function CandidateProfilePage({
     .filter((job) => job.status !== 'CLOSED' && !activeJobIds.has(job.id))
     .map((job) => ({ id: job.id, internalName: job.internalName }))
 
+  // Only pair "at {currentCompany}" with the display title when that title
+  // is the candidate's Type/current title, not the job they're going for —
+  // "{Job they're going for} · at {current employer}" reads like they
+  // already work there, which is confusing when it's just their day job.
+  const relevantApplication = findRelevantApplication(candidate)
   const subtitleParts = [
     getCandidateDisplayTitle(candidate),
-    candidate.currentCompany && `at ${candidate.currentCompany}`,
+    !relevantApplication && candidate.currentCompany && `at ${candidate.currentCompany}`,
   ].filter(Boolean)
 
   const initials =
@@ -175,8 +183,12 @@ export default async function CandidateProfilePage({
                 phone: candidate.phone,
                 linkedinUrl: candidate.linkedinUrl,
                 currentCompany: candidate.currentCompany,
+                currentTitle: candidate.currentTitle,
                 location: candidate.location,
+                source: candidate.source,
+                ownerId: candidate.ownerId,
               }}
+              users={allUsers}
             />
           </div>
         </div>
@@ -213,7 +225,7 @@ export default async function CandidateProfilePage({
                         <Badge variant="secondary">
                           {STAGE_LABELS.REJECTED}
                           {app.rejectionReason &&
-                            ` · ${REJECTION_REASON_LABELS[app.rejectionReason]}`}
+                            ` · ${rejectionReasonText(app.rejectionReason, app.customRejectionReason)}`}
                         </Badge>
                       )}
                     </div>
@@ -259,16 +271,13 @@ export default async function CandidateProfilePage({
             />
           </div>
 
-          <div className="rounded-lg border bg-background p-4">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Tag className="size-4" />
-              Type
-            </h2>
-            <CandidateTypeSelect
-              candidateId={candidate.id}
-              initialType={candidate.candidateType}
-            />
-          </div>
+          <ExperienceCard
+            workHistory={candidate.workHistory as WorkHistoryEntry[] | null}
+            yearsExperience={candidate.yearsExperience}
+            resumeHref={
+              candidate.resumes.length > 0 ? `/api/resumes/${candidate.resumes[0].id}` : null
+            }
+          />
 
           <div className="rounded-lg border bg-background p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">

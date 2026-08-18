@@ -63,9 +63,11 @@ export function ApplicationPipelineStepper({
     startTransition(() => transitionStage(applicationId, stage))
   }
 
-  function handleReject(reason?: RejectionReason) {
+  function handleReject(reason?: RejectionReason, customReason?: string) {
     setRejectOpen(false)
-    startTransition(() => transitionStage(applicationId, 'REJECTED', reason))
+    startTransition(() =>
+      transitionStage(applicationId, 'REJECTED', reason, customReason)
+    )
   }
 
   return (

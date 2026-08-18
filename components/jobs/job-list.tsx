@@ -38,21 +38,30 @@ export function JobList({ jobs }: { jobs: JobWithCount[] }) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold">{job.internalName}</h2>
+              {(job.clientName || job.teamName) && (
+                <p className="truncate text-sm text-muted-foreground">
+                  {[job.clientName, job.teamName].filter(Boolean).join(' - ')}
+                </p>
+              )}
               <p className="truncate text-sm text-muted-foreground">
-                {job.externalName} · {job.location}
+                {[
+                  job.location,
+                  [
+                    job.isOnsite && 'Onsite',
+                    job.isHybrid && 'Hybrid',
+                    job.isRemote && 'Remote',
+                  ]
+                    .filter(Boolean)
+                    .join(' / '),
+                ]
+                  .filter(Boolean)
+                  .join(' - ')}
               </p>
             </div>
             <Badge variant={STATUS_VARIANT[job.status]} className="shrink-0">
               {STATUS_LABEL[job.status]}
             </Badge>
           </div>
-
-          {(job.isRemote || job.isHybrid) && (
-            <div className="mt-3 flex gap-1.5">
-              {job.isRemote && <Badge variant="outline">Remote</Badge>}
-              {job.isHybrid && <Badge variant="outline">Hybrid</Badge>}
-            </div>
-          )}
 
           {job.description && (
             <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">

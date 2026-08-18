@@ -5,7 +5,7 @@ import { useDraggable } from '@dnd-kit/core'
 import type { ApplicationWithCandidate } from '@/components/kanban/pipeline-board'
 import { StarRating } from '@/components/candidates/star-rating'
 import { Badge } from '@/components/ui/badge'
-import { REJECTION_REASON_LABELS } from '@/lib/pipeline'
+import { rejectionReasonText } from '@/lib/pipeline'
 
 export function ApplicationCard({
   application,
@@ -23,7 +23,7 @@ export function ApplicationCard({
 
   const subtitle =
     application.stage === 'REJECTED' && application.rejectionReason
-      ? `${application.job?.internalName} · ${REJECTION_REASON_LABELS[application.rejectionReason]}`
+      ? `${application.job?.internalName} · ${rejectionReasonText(application.rejectionReason, application.customRejectionReason)}`
       : application.job?.internalName
 
   return (

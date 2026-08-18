@@ -1,0 +1,2 @@
+ALTER TABLE "Job" ADD COLUMN "clientName" TEXT;
+ALTER TABLE "Job" ADD COLUMN "teamName" TEXT;

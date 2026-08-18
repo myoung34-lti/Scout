@@ -1,17 +1,16 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { searchCandidates } from '@/lib/actions/search'
 import { listJobs, listDistinctLocations } from '@/lib/actions/jobs'
 import { listTagOptions } from '@/lib/actions/tags'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { STAGE_LABELS, ALL_STAGES, ACTIVE_STAGES } from '@/lib/pipeline'
+import { STAGE_LABELS, ALL_STAGES } from '@/lib/pipeline'
 import { StarRating } from '@/components/candidates/star-rating'
 import { CandidateSearchFilters } from '@/components/candidates/candidate-search-filters'
 import { ActiveFilterPills } from '@/components/candidates/active-filter-pills'
 import type { PipelineStage } from '@prisma/client'
-import { getCandidateDisplayTitle } from '@/lib/candidate-type'
+import { getCandidateDisplayTitle, findCurrentApplication } from '@/lib/candidate-type'
 
 function toArray(value: string | string[] | undefined): string[] {
   if (!value) return []
@@ -25,20 +24,6 @@ export default async function CandidatesPage({
 }) {
   const params = await searchParams
 
-  // Default view is "active" candidates (in an in-progress application) —
-  // redirect the bare/reset URL to an explicit active-stage filter so the
-  // pills above the results always show what's actually being filtered.
-  if (params.stage === undefined) {
-    const qs = new URLSearchParams()
-    for (const [key, value] of Object.entries(params)) {
-      if (key === 'stage' || value === undefined) continue
-      if (Array.isArray(value)) value.forEach((v) => qs.append(key, v))
-      else qs.append(key, value)
-    }
-    ACTIVE_STAGES.forEach((s) => qs.append('stage', s))
-    redirect(`/candidates?${qs.toString()}`)
-  }
-
   const query = typeof params.q === 'string' ? params.q : undefined
   const stageParams = toArray(params.stage)
   const jobIdParam = typeof params.jobId === 'string' ? params.jobId : undefined
@@ -48,6 +33,8 @@ export default async function CandidatesPage({
     typeof params.minRating === 'string' ? params.minRating : undefined
   const location = typeof params.location === 'string' ? params.location : undefined
   const tagIds = toArray(params.tagIds)
+  const pooled = params.pooled === '1'
+  const rated = params.rated === '1'
 
   const stages = stageParams.filter((s): s is PipelineStage =>
     ALL_STAGES.includes(s as PipelineStage)
@@ -67,6 +54,8 @@ export default async function CandidatesPage({
       minRating,
       location,
       tagIds,
+      pooled,
+      rated,
     }),
     listJobs(),
     listDistinctLocations(),
@@ -105,7 +94,9 @@ export default async function CandidatesPage({
             </p>
           ) : (
             <ul className="divide-y rounded-lg border bg-background">
-              {candidates.map((c) => (
+              {candidates.map((c) => {
+                const currentApplication = findCurrentApplication(c)
+                return (
                 <li key={c.id} className="flex items-center justify-between p-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -132,14 +123,15 @@ export default async function CandidatesPage({
                     )}
                   </div>
                   <div className="flex flex-wrap justify-end gap-1">
-                    {c.applications.map((app) => (
-                      <Badge key={app.id} variant="secondary">
-                        {STAGE_LABELS[app.stage]}
+                    {currentApplication && (
+                      <Badge variant="secondary">
+                        {STAGE_LABELS[currentApplication.stage]}
                       </Badge>
-                    ))}
+                    )}
                   </div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
         </div>

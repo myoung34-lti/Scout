@@ -3,6 +3,14 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { requireSession } from '@/lib/session'
 
+export type WorkHistoryEntry = {
+  title: string
+  company: string
+  startYear: number | null
+  endYear: number | null
+  isCurrent: boolean
+}
+
 export type ParsedResumeFields = {
   firstName?: string
   lastName?: string
@@ -12,6 +20,8 @@ export type ParsedResumeFields = {
   currentCompany?: string
   location?: string
   skills?: string[]
+  workHistory?: WorkHistoryEntry[]
+  yearsExperience?: number
 }
 
 export type ParseResumeResult =
@@ -69,7 +79,7 @@ export async function parseResume(file: File): Promise<ParseResumeResult> {
   try {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
       tools: [
         {
           name: 'extract_candidate_info',
@@ -96,6 +106,36 @@ export async function parseResume(file: File): Promise<ParseResumeResult> {
                 items: { type: 'string' },
                 description:
                   'Technical skills, tools, languages, and technologies mentioned (e.g. "Python", "AWS", "Salesforce"). Keep each entry short — a single skill or tool name, not a phrase.',
+              },
+              workHistory: {
+                type: 'array',
+                description:
+                  'Their work history, most recent role first, one entry per position.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    company: { type: 'string' },
+                    startYear: {
+                      type: 'integer',
+                      description: 'The year this role started.',
+                    },
+                    endYear: {
+                      type: 'integer',
+                      description: 'The year this role ended. Omit entirely if it is their current role.',
+                    },
+                    isCurrent: {
+                      type: 'boolean',
+                      description: 'True if this is their current, ongoing role.',
+                    },
+                  },
+                  required: ['title', 'company', 'startYear', 'isCurrent'],
+                },
+              },
+              yearsExperience: {
+                type: 'number',
+                description:
+                  'Their total years of professional work experience, estimated from the full work history (not just the current role). Round to the nearest half year.',
               },
             },
           },

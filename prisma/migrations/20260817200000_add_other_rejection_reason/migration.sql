@@ -1,0 +1,3 @@
+ALTER TYPE "RejectionReason" ADD VALUE 'NOT_LOCAL';
+ALTER TYPE "RejectionReason" ADD VALUE 'PREFER_REMOTE';
+ALTER TYPE "RejectionReason" ADD VALUE 'OTHER';

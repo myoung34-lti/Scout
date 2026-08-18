@@ -20,8 +20,13 @@ export const REJECTION_REASON_LABELS: Record<RejectionReason, string> = {
   POSITION_FILLED: 'Position Filled',
   POSITION_CLOSED: 'Position Closed',
   ACCEPTED_ANOTHER_OFFER: 'Accepted Another Offer',
+  NOT_LOCAL: 'Not Local',
+  PREFER_REMOTE: 'Prefer 100% Remote',
+  OTHER: 'Other',
 }
 
+// Order here is the order shown in the rejection dialog's dropdown — OTHER
+// (the free-text "write your own" option) stays last.
 export const ALL_REJECTION_REASONS = [
   'COMMUNICATION',
   'CORE_VALUE_MISMATCH',
@@ -29,7 +34,22 @@ export const ALL_REJECTION_REASONS = [
   'POSITION_FILLED',
   'POSITION_CLOSED',
   'ACCEPTED_ANOTHER_OFFER',
+  'NOT_LOCAL',
+  'PREFER_REMOTE',
+  'OTHER',
 ] as const satisfies readonly RejectionReason[]
+
+// The actual text to display for a rejection: the canned label, unless the
+// reason is the free-text OTHER option, in which case it's whatever the user
+// typed in at rejection time.
+export function rejectionReasonText(
+  reason: RejectionReason,
+  customText: string | null
+): string {
+  return reason === 'OTHER' && customText
+    ? customText
+    : REJECTION_REASON_LABELS[reason]
+}
 
 // Active, in-order funnel stages shown as Kanban columns.
 export const ACTIVE_STAGES: PipelineStage[] = [
@@ -58,6 +78,16 @@ export const INTERVIEW_STAGES: PipelineStage[] = [
 ]
 
 export const ALL_STAGES: PipelineStage[] = [...ACTIVE_STAGES, ...TERMINAL_STAGES]
+
+// The formal interview process proper — from the first real interview
+// (Behavioral) through Offer — used for the job detail page's summary cards.
+export const FORMAL_INTERVIEW_STAGES: PipelineStage[] = [
+  'BEHAVIORAL_INTERVIEW',
+  'TECHNICAL_INTERVIEW',
+  'EXECUTIVE_INTERVIEW',
+  'CLIENT_INTERVIEW',
+  'OFFER',
+]
 
 // The forward-moving steps shown in the profile page's pipeline stepper —
 // every active stage plus the positive terminal outcome. Rejected is

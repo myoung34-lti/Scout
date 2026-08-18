@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { ALL_CANDIDATE_TYPES } from '@/lib/candidate-type'
 import { ALL_CANDIDATE_SOURCES } from '@/lib/candidate-source'
 import { ACTIVE_STAGES } from '@/lib/pipeline'
 
@@ -30,9 +29,6 @@ export const candidateSchema = z.object({
   phone: optionalText,
   linkedinUrl: optionalUrl,
   currentCompany: optionalText,
-  candidateType: z.enum(ALL_CANDIDATE_TYPES, {
-    error: 'Select a type',
-  }),
   source: z.enum(ALL_CANDIDATE_SOURCES, {
     error: 'Select a source',
   }),
@@ -63,6 +59,31 @@ export const candidateSchema = z.object({
 
 export type CandidateFormValues = z.infer<typeof candidateSchema>
 
+// "NONE" is the edit form's explicit "unset this" option — distinct from
+// simply not touching the field — for anything backed by a nullable column.
+const NONE = 'NONE'
+
+// Unlike optionalText (used for creation, where an empty field just means
+// "never collected"), the edit form always resubmits every field's full
+// current state — so an emptied value here means "clear it", and must
+// become an explicit null rather than undefined. Prisma's update() treats
+// `undefined` as "field not provided" and silently leaves the old value in
+// place, which would make clearing a field in this form a no-op.
+const nullableText = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? v : null))
+
+const nullableUrl = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => {
+    if (!v) return null
+    return /^https?:\/\//i.test(v) ? v : `https://${v}`
+  })
+
 export const candidateEditSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required'),
   lastName: z.string().trim().min(1, 'Last name is required'),
@@ -70,14 +91,24 @@ export const candidateEditSchema = z.object({
     .string()
     .trim()
     .optional()
-    .transform((v) => (v === '' ? undefined : v))
-    .refine((v) => v === undefined || z.string().email().safeParse(v).success, {
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || z.string().email().safeParse(v).success, {
       message: 'Enter a valid email',
     }),
-  phone: optionalText,
-  linkedinUrl: optionalUrl,
-  currentCompany: optionalText,
-  location: optionalText,
+  phone: nullableText,
+  linkedinUrl: nullableUrl,
+  currentCompany: nullableText,
+  currentTitle: nullableText,
+  location: nullableText,
+  source: z
+    .union([z.enum(ALL_CANDIDATE_SOURCES), z.literal(NONE)])
+    .optional()
+    .transform((v) => (!v || v === NONE ? null : v)),
+  ownerId: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (!v || v === NONE ? null : v)),
 })
 
 export type CandidateEditFormValues = z.infer<typeof candidateEditSchema>

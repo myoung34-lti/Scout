@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
 import { jobSchema } from '@/lib/validation/job'
+import { CANONICAL_JOB_LOCATIONS } from '@/lib/job-locations'
 import type { JobStatus } from '@prisma/client'
 
 export async function listJobs(statusFilter?: JobStatus) {
@@ -14,6 +15,17 @@ export async function listJobs(statusFilter?: JobStatus) {
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { applications: true } } },
   })
+}
+
+export async function countJobsByStatus() {
+  await requireSession()
+  const [total, open, onHold, closed] = await Promise.all([
+    prisma.job.count(),
+    prisma.job.count({ where: { status: 'OPEN' } }),
+    prisma.job.count({ where: { status: 'ON_HOLD' } }),
+    prisma.job.count({ where: { status: 'CLOSED' } }),
+  ])
+  return { ALL: total, OPEN: open, ON_HOLD: onHold, CLOSED: closed }
 }
 
 export async function getJob(jobId: string) {
@@ -28,14 +40,18 @@ export async function listDistinctLocations() {
     select: { location: true },
     orderBy: { location: 'asc' },
   })
-  return jobs.map((j) => j.location)
+  const existing = jobs.map((j) => j.location).filter((loc) => loc.length > 0)
+  return [...new Set([...CANONICAL_JOB_LOCATIONS, ...existing])]
 }
 
 function readJobFormData(formData: FormData) {
   return {
     internalName: formData.get('internalName'),
     externalName: formData.get('externalName'),
+    clientName: formData.get('clientName'),
+    teamName: formData.get('teamName'),
     location: formData.get('location'),
+    isOnsite: formData.get('isOnsite'),
     isRemote: formData.get('isRemote'),
     isHybrid: formData.get('isHybrid'),
     description: formData.get('description'),
