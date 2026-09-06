@@ -42,6 +42,7 @@ export function CandidateFilterBar({
 
   const [queryValue, setQueryValue] = useState(searchParams.get('q') ?? '')
   const [locationValue, setLocationValue] = useState(searchParams.get('location') ?? '')
+  const [tagQuery, setTagQuery] = useState('')
   // Debounced in the change handler rather than an effect — writing the URL
   // from an effect would fire on every keystroke and trip set-state-in-effect.
   const queryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -49,6 +50,17 @@ export function CandidateFilterBar({
 
   const selectedStages = searchParams.getAll('stage')
   const selectedTags = searchParams.getAll('tagIds')
+
+  // Typing narrows the list; already-selected tags stay pinned to the top so
+  // they never scroll out of reach behind a filtered list.
+  const visibleTags = tags
+    .filter((t) => t.label.toLowerCase().includes(tagQuery.trim().toLowerCase()))
+    .sort((a, b) => {
+      const aSel = selectedTags.includes(a.id)
+      const bSel = selectedTags.includes(b.id)
+      if (aSel !== bSel) return aSel ? -1 : 1
+      return a.label.localeCompare(b.label)
+    })
   const activeCount = [...searchParams.keys()].filter(
     (k) => !['page', 'sort', 'status'].includes(k)
   ).length
@@ -234,16 +246,29 @@ export function CandidateFilterBar({
           {tags.length > 0 && (
             <fieldset className="space-y-2">
               <legend className="section-label">Tags</legend>
+              <Input
+                value={tagQuery}
+                onChange={(e) => setTagQuery(e.target.value)}
+                placeholder={`Search ${tags.length} tags…`}
+                aria-label="Search tags"
+                className="h-8"
+              />
               <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
-                {tags.map((t) => (
-                  <label key={t.id} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={selectedTags.includes(t.id)}
-                      onCheckedChange={() => toggleInList('tagIds', selectedTags, t.id)}
-                    />
-                    {t.label}
-                  </label>
-                ))}
+                {visibleTags.length === 0 ? (
+                  <p className="py-2 text-sm text-muted-foreground">
+                    No tags match “{tagQuery}”.
+                  </p>
+                ) : (
+                  visibleTags.map((t) => (
+                    <label key={t.id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selectedTags.includes(t.id)}
+                        onCheckedChange={() => toggleInList('tagIds', selectedTags, t.id)}
+                      />
+                      {t.label}
+                    </label>
+                  ))
+                )}
               </div>
             </fieldset>
           )}
