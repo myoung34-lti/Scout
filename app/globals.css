@@ -158,8 +158,11 @@
   --foreground-subtle: oklch(0.62 0.01 300);
   --card: oklch(0.196 0.006 300);
   --card-foreground: oklch(0.955 0.004 300);
-  --elevated: oklch(0.235 0.007 300);
-  --popover: oklch(0.235 0.007 300);
+  /* Elevation reads as lighter in a dark UI, so floating surfaces (dialogs,
+     menus, popovers) step well clear of both the page and the cards —
+     dimming a near-black page with a scrim barely separates them on its own. */
+  --elevated: oklch(0.275 0.008 300);
+  --popover: oklch(0.275 0.008 300);
   --popover-foreground: oklch(0.955 0.004 300);
   --primary: var(--maroon);
   --primary-hover: var(--maroon-bright);
