@@ -20,13 +20,20 @@ function Tabs({
 
 function TabsList({
   className,
+  variant = "pill",
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) {
+}: React.ComponentProps<typeof TabsPrimitive.List> & {
+  variant?: "pill" | "underline"
+}) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
+      data-variant={variant}
       className={cn(
-        "inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+        "text-muted-foreground",
+        variant === "pill"
+          ? "inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-1"
+          : "flex w-full items-center gap-1 overflow-x-auto border-b border-border",
         className
       )}
       {...props}
@@ -42,7 +49,9 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+        "inline-flex items-center justify-center gap-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+        "in-data-[variant=pill]:flex-1 in-data-[variant=pill]:rounded-md in-data-[variant=pill]:border in-data-[variant=pill]:border-transparent in-data-[variant=pill]:px-2 in-data-[variant=pill]:py-1 in-data-[variant=pill]:data-[state=active]:bg-background in-data-[variant=pill]:data-[state=active]:text-foreground in-data-[variant=pill]:data-[state=active]:shadow-sm",
+        "in-data-[variant=underline]:-mb-px in-data-[variant=underline]:shrink-0 in-data-[variant=underline]:border-b-2 in-data-[variant=underline]:border-transparent in-data-[variant=underline]:px-3 in-data-[variant=underline]:pb-2.5 in-data-[variant=underline]:pt-1 in-data-[variant=underline]:hover:text-foreground in-data-[variant=underline]:data-[state=active]:border-primary in-data-[variant=underline]:data-[state=active]:text-foreground",
         className
       )}
       {...props}
