@@ -44,11 +44,19 @@ type Candidate = {
 export function EditCandidateDialog({
   candidate,
   users,
+  open: controlledOpen,
+  onOpenChange,
+  showTrigger = true,
 }: {
   candidate: Candidate
   users: { id: string; name: string }[]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
   const [parsing, setParsing] = useState(false)
   const [parseNotice, setParseNotice] = useState<string | null>(null)
   const [fields, setFields] = useState({
@@ -115,12 +123,14 @@ export function EditCandidateDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Pencil />
-          Edit Candidate
-        </Button>
-      </DialogTrigger>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Pencil />
+            Edit Candidate
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit candidate</DialogTitle>

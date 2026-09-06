@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText } from 'lucide-react'
 import { BackButton } from '@/components/layout/back-button'
 import { getCandidate } from '@/lib/actions/candidates'
-import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText } from '@/lib/pipeline'
+import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText, stageTone } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
 import { ResumeUploader } from '@/components/candidates/resume-uploader'
 import { CandidateRating } from '@/components/candidates/candidate-rating'
@@ -12,7 +12,10 @@ import { AskScoutCard } from '@/components/candidates/ask-scout-card'
 import { CandidateInsightsCard } from '@/components/candidates/candidate-insights-card'
 import { ComposeEmailProvider } from '@/components/candidates/compose-email-provider'
 import { TagInput } from '@/components/candidates/tag-input'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card'
+import { ProfileTabs, ProfileTabsProvider } from '@/components/candidates/profile-tabs'
+import { InsightsRailCard } from '@/components/candidates/insights-rail-card'
+import { CandidateHeaderActions } from '@/components/candidates/candidate-header-actions'
 import { listTags } from '@/lib/actions/tags'
 import { listJobs } from '@/lib/actions/jobs'
 import { listUsers } from '@/lib/actions/users'
@@ -22,7 +25,6 @@ import { getCandidateDisplayTitle, findRelevantApplication } from '@/lib/candida
 import { AddToJobDialog } from '@/components/candidates/add-to-job-dialog'
 import { TalentPoolToggle } from '@/components/candidates/talent-pool-toggle'
 import { ApplicationPipelineStepper } from '@/components/candidates/application-pipeline-stepper'
-import { EditCandidateDialog } from '@/components/candidates/edit-candidate-dialog'
 import { ExperienceCard } from '@/components/candidates/experience-card'
 import type { WorkHistoryEntry } from '@/lib/actions/resume-parser'
 import { INTERVIEW_STAGE_FOR_TYPE } from '@/lib/interview'
@@ -125,6 +127,7 @@ export default async function CandidateProfilePage({
       staticVariables={composeGlobals.staticVariables}
       emailTemplates={composeGlobals.emailTemplates}
     >
+    <ProfileTabsProvider>
     <div className="space-y-6">
       <BackButton />
 
@@ -199,7 +202,8 @@ export default async function CandidateProfilePage({
                 </div>
               )}
             </div>
-            <EditCandidateDialog
+            <CandidateHeaderActions
+              hasEmail={Boolean(candidate.email)}
               candidate={{
                 id: candidate.id,
                 firstName: candidate.firstName,
@@ -221,13 +225,17 @@ export default async function CandidateProfilePage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-lg border bg-background p-4">
-            <div className="mb-3 flex items-center justify-end">
-              <AddToJobDialog
-                candidateId={candidate.id}
-                eligibleJobs={eligibleJobs}
-              />
-            </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Applications</CardTitle>
+              <CardAction>
+                <AddToJobDialog
+                  candidateId={candidate.id}
+                  eligibleJobs={eligibleJobs}
+                />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
             {candidate.applications.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Not assigned to any job.
@@ -244,7 +252,7 @@ export default async function CandidateProfilePage({
                         {app.job.internalName}
                       </Link>
                       {app.stage === 'REJECTED' && (
-                        <Badge variant="secondary">
+                        <Badge variant={stageTone('REJECTED')}>
                           {STAGE_LABELS.REJECTED}
                           {app.rejectionReason &&
                             ` · ${rejectionReasonText(app.rejectionReason, app.customRejectionReason)}`}
@@ -264,50 +272,59 @@ export default async function CandidateProfilePage({
                 ))}
               </ul>
             )}
-          </div>
+            </CardContent>
+          </Card>
 
-          <Tabs defaultValue="activity">
-            <TabsList>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="insights">Candidate Insight</TabsTrigger>
-              <TabsTrigger value="ask-scout">Ask Scout</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="activity">
-              <div className="rounded-lg border bg-background p-4">
-                <ActivityFeed
-                  candidateId={candidate.id}
-                  notes={candidate.notes}
-                  interviews={candidate.interviews}
-                  emails={candidate.emails}
-                  applications={candidate.applications}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="insights">
-              <div className="rounded-lg border bg-background p-4">
-                <CandidateInsightsCard
-                  candidateId={candidate.id}
-                  insight={candidate.insight}
-                  latestActivityAt={latestActivityAt}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="ask-scout">
-              <div className="rounded-lg border bg-background p-4">
-                <AskScoutCard
-                  candidateId={candidate.id}
-                  messages={candidate.askScoutMessages}
-                  currentUserName={composeGlobals.recruiterName}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <ProfileTabs
+            activity={
+              <Card>
+                <CardContent>
+                  <ActivityFeed
+                    candidateId={candidate.id}
+                    notes={candidate.notes}
+                    interviews={candidate.interviews}
+                    emails={candidate.emails}
+                    applications={candidate.applications}
+                  />
+                </CardContent>
+              </Card>
+            }
+            insights={
+              <Card>
+                <CardContent>
+                  <CandidateInsightsCard
+                    candidateId={candidate.id}
+                    insight={candidate.insight}
+                    latestActivityAt={latestActivityAt}
+                  />
+                </CardContent>
+              </Card>
+            }
+            askScout={
+              <Card>
+                <CardContent>
+                  <AskScoutCard
+                    candidateId={candidate.id}
+                    messages={candidate.askScoutMessages}
+                    currentUserName={composeGlobals.recruiterName}
+                  />
+                </CardContent>
+              </Card>
+            }
+          />
         </div>
 
         <div className="space-y-4">
+          <InsightsRailCard
+            hasInsight={Boolean(candidate.insight)}
+            generatedAt={
+              candidate.insight ? shortDateFormatter.format(candidate.insight.generatedAt) : null
+            }
+            isStale={Boolean(
+              candidate.insight && latestActivityAt > candidate.insight.generatedAt
+            )}
+          />
+
           <div className="rounded-lg border bg-background p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Users className="size-4" />
@@ -376,6 +393,7 @@ export default async function CandidateProfilePage({
         </div>
       </div>
     </div>
+    </ProfileTabsProvider>
     </ComposeEmailProvider>
   )
 }
