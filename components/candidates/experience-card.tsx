@@ -45,7 +45,7 @@ export function ExperienceCard({
                   {entry.company}
                   {' · '}
                   {showAsCurrent ? (
-                    <span className="text-emerald-600 dark:text-emerald-400">Current</span>
+                    <span className="text-success">Current</span>
                   ) : isStale ? (
                     <>Previous · {entry.startYear ?? '—'} – {entry.endYear}</>
                   ) : (
