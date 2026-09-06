@@ -57,7 +57,13 @@ export type UpdateInterviewDraftResult = { error?: string } | { ok: true }
 
 export async function updateInterviewDraft(
   interviewId: string,
-  data: { notes?: string; firefliesSummary?: string; applicationId?: string | null }
+  data: {
+    notes?: string
+    firefliesSummary?: string
+    applicationId?: string | null
+    compensationNotes?: string
+    recommendationNotes?: string
+  }
 ): Promise<UpdateInterviewDraftResult> {
   await requireSession()
 
@@ -85,6 +91,8 @@ export async function updateInterviewDraft(
       data: {
         notes: data.notes,
         firefliesSummary: data.firefliesSummary,
+        compensationNotes: data.compensationNotes,
+        recommendationNotes: data.recommendationNotes,
         ...(data.applicationId !== undefined
           ? { applicationId: data.applicationId }
           : {}),
@@ -105,6 +113,14 @@ export async function completeInterview(
 
   if (!ALL_RECOMMENDATIONS.includes(recommendation)) {
     throw new Error('Invalid recommendation')
+  }
+
+  const existing = await prisma.interview.findUniqueOrThrow({
+    where: { id: interviewId },
+    select: { recommendationNotes: true },
+  })
+  if (!existing.recommendationNotes || existing.recommendationNotes.trim() === '') {
+    throw new Error('Recommendation notes are required to complete an interview.')
   }
 
   const interview = await prisma.interview.update({

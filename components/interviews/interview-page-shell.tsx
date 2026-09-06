@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
@@ -25,6 +24,8 @@ export function InterviewPageShell({
   initialNotes,
   initialFireflies,
   initialRecommendation,
+  initialRecommendationNotes,
+  initialCompensationNotes,
   initialApplicationId,
   applications,
 }: {
@@ -40,31 +41,32 @@ export function InterviewPageShell({
   initialNotes: string
   initialFireflies: string
   initialRecommendation: InterviewRecommendation | null
+  initialRecommendationNotes: string
+  initialCompensationNotes: string
   initialApplicationId: string | null
   applications: { id: string; internalName: string }[]
 }) {
   const router = useRouter()
   const workspaceRef = useRef<InterviewWorkspaceHandle>(null)
 
-  function handleBack(e: React.MouseEvent) {
-    e.preventDefault()
+  function handleBack() {
     if (workspaceRef.current?.hasUnsavedChanges()) {
       const proceed = window.confirm('You have unsaved changes. Leave without saving?')
       if (!proceed) return
     }
-    router.push(`/candidates/${candidateId}`)
+    router.back()
   }
 
   return (
     <div className="space-y-4">
-      <Link
-        href={`/candidates/${candidateId}`}
+      <button
+        type="button"
         onClick={handleBack}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
-        Back to profile
-      </Link>
+        Back
+      </button>
 
       <div>
         <div className="flex items-center gap-3">
@@ -85,6 +87,8 @@ export function InterviewPageShell({
           initialNotes={initialNotes}
           initialFireflies={initialFireflies}
           initialRecommendation={initialRecommendation}
+          initialRecommendationNotes={initialRecommendationNotes}
+          initialCompensationNotes={initialCompensationNotes}
           initialApplicationId={initialApplicationId}
           applications={applications}
         />

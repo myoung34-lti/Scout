@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   experimental: {
     serverActions: {
@@ -25,6 +26,14 @@ const nextConfig: NextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
         ],
+      },
+      {
+        // Resume files render in an in-app <iframe> preview (resume-panel.tsx) —
+        // the blanket DENY above blocks that self-framing too, not just
+        // third-party embeds. SAMEORIGIN still blocks any other site from
+        // framing it, which is the actual protection this header is for.
+        source: '/api/resumes/:path*',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
       },
     ];
   },

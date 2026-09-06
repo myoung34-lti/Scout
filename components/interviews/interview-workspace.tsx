@@ -42,6 +42,8 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
   initialNotes: string
   initialFireflies: string
   initialRecommendation: InterviewRecommendation | null
+  initialRecommendationNotes: string
+  initialCompensationNotes: string
   initialApplicationId: string | null
   applications: { id: string; internalName: string }[]
 }>(function InterviewWorkspace(
@@ -53,6 +55,8 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
     initialNotes,
     initialFireflies,
     initialRecommendation,
+    initialRecommendationNotes,
+    initialCompensationNotes,
     initialApplicationId,
     applications,
   },
@@ -63,6 +67,8 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
   const [applicationId, setApplicationId] = useState(initialApplicationId ?? 'NONE')
   const [recommendation, setRecommendation] =
     useState<InterviewRecommendation | null>(initialRecommendation)
+  const [recommendationNotes, setRecommendationNotes] = useState(initialRecommendationNotes)
+  const [compensationNotes, setCompensationNotes] = useState(initialCompensationNotes)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [completing, startCompleting] = useTransition()
 
@@ -70,6 +76,8 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
     notes: string
     firefliesSummary: string
     applicationId: string
+    recommendationNotes: string
+    compensationNotes: string
   } | null>(null)
   const savingRef = useRef(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -88,6 +96,8 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
         firefliesSummary: toSave.firefliesSummary,
         applicationId:
           toSave.applicationId === 'NONE' ? null : toSave.applicationId,
+        recommendationNotes: toSave.recommendationNotes,
+        compensationNotes: toSave.compensationNotes,
       })
 
       savingRef.current = false
@@ -102,7 +112,13 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
   }, [interviewId])
 
   const scheduleSave = useCallback(
-    (next: { notes: string; firefliesSummary: string; applicationId: string }) => {
+    (next: {
+      notes: string
+      firefliesSummary: string
+      applicationId: string
+      recommendationNotes: string
+      compensationNotes: string
+    }) => {
       pendingRef.current = next
       if (debounceRef.current) clearTimeout(debounceRef.current)
       debounceRef.current = setTimeout(() => {
@@ -114,17 +130,27 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
 
   function handleNotesChange(value: string) {
     setNotes(value)
-    scheduleSave({ notes: value, firefliesSummary, applicationId })
+    scheduleSave({ notes: value, firefliesSummary, applicationId, recommendationNotes, compensationNotes })
   }
 
   function handleFirefliesChange(value: string) {
     setFirefliesSummary(value)
-    scheduleSave({ notes, firefliesSummary: value, applicationId })
+    scheduleSave({ notes, firefliesSummary: value, applicationId, recommendationNotes, compensationNotes })
   }
 
   function handleApplicationChange(value: string) {
     setApplicationId(value)
-    scheduleSave({ notes, firefliesSummary, applicationId: value })
+    scheduleSave({ notes, firefliesSummary, applicationId: value, recommendationNotes, compensationNotes })
+  }
+
+  function handleRecommendationNotesChange(value: string) {
+    setRecommendationNotes(value)
+    scheduleSave({ notes, firefliesSummary, applicationId, recommendationNotes: value, compensationNotes })
+  }
+
+  function handleCompensationNotesChange(value: string) {
+    setCompensationNotes(value)
+    scheduleSave({ notes, firefliesSummary, applicationId, recommendationNotes, compensationNotes: value })
   }
 
   function hasUnsavedChanges() {
@@ -154,8 +180,10 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
 
   useImperativeHandle(ref, () => ({ hasUnsavedChanges }))
 
+  const canComplete = recommendation !== null && recommendationNotes.trim() !== ''
+
   function handleComplete() {
-    if (!recommendation) return
+    if (!recommendation || !canComplete) return
     startCompleting(async () => {
       await flushSave()
       await completeInterview(interviewId, recommendation)
@@ -204,6 +232,19 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
         </div>
       )}
 
+      {type === 'INTRO' && (
+        <div className="mb-4 space-y-2">
+          <label className="text-sm font-medium">Compensation</label>
+          <Textarea
+            value={compensationNotes}
+            onChange={(e) => handleCompensationNotesChange(e.target.value)}
+            rows={1}
+            placeholder="Expected or discussed compensation…"
+            className="field-sizing-content resize-none"
+          />
+        </div>
+      )}
+
       <div className="mb-4 space-y-2">
         <label className="text-sm font-medium">Interview Notes</label>
         <Textarea
@@ -237,12 +278,19 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
           value={recommendation}
           onChange={setRecommendation}
         />
+        <Textarea
+          value={recommendationNotes}
+          onChange={(e) => handleRecommendationNotesChange(e.target.value)}
+          rows={1}
+          placeholder="Overall recommendation — required before completing…"
+          className="field-sizing-content resize-none"
+        />
       </div>
 
       <div className="mt-auto flex justify-end">
         <Button
           onClick={handleComplete}
-          disabled={!recommendation || completing}
+          disabled={!canComplete || completing}
         >
           {completing
             ? 'Saving…'

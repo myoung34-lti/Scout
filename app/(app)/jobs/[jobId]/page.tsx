@@ -1,8 +1,10 @@
 import Link from 'next/link'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { notFound } from 'next/navigation'
+import { BackButton } from '@/components/layout/back-button'
 import { getJob } from '@/lib/actions/jobs'
 import { getBoardApplications } from '@/lib/actions/pipeline'
+import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PipelineBoard } from '@/components/kanban/pipeline-board'
@@ -20,9 +22,10 @@ export default async function JobDetailPage({
   params: Promise<{ jobId: string }>
 }) {
   const { jobId } = await params
-  const [job, applications] = await Promise.all([
+  const [job, applications, composeGlobals] = await Promise.all([
     getJob(jobId),
     getBoardApplications(jobId),
+    getComposeEmailGlobals(),
   ])
 
   if (!job) notFound()
@@ -49,13 +52,7 @@ export default async function JobDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/jobs"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to all jobs
-      </Link>
+      <BackButton />
 
       <div className="flex items-start justify-between">
         <div>
@@ -102,7 +99,13 @@ export default async function JobDetailPage({
         ))}
       </div>
 
-      <PipelineBoard applications={applications} />
+      <PipelineBoard
+        applications={applications}
+        recruiterName={composeGlobals.recruiterName}
+        recruiterEmail={composeGlobals.recruiterEmail}
+        staticVariables={composeGlobals.staticVariables}
+        emailTemplates={composeGlobals.emailTemplates}
+      />
 
       {job.description && (
         <div className="rounded-lg border bg-background p-4">

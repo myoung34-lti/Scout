@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { toast } from 'sonner'
 import { ChevronRight, Trash2, Check, X, CircleHelp } from 'lucide-react'
 import { transitionStage } from '@/lib/actions/pipeline'
 import { Button } from '@/components/ui/button'
 import { RejectionReasonDialog } from '@/components/kanban/rejection-reason-dialog'
-import { STAGE_LABELS, STEPPER_STAGES } from '@/lib/pipeline'
+import { useComposeEmail } from '@/components/candidates/compose-email-provider'
+import { STAGE_LABELS, STEPPER_STAGES, EMAIL_PROMPT_STAGES } from '@/lib/pipeline'
 import { recommendationOutcome } from '@/lib/interview'
 import type { PipelineStage, RejectionReason, InterviewRecommendation } from '@prisma/client'
 
@@ -39,6 +41,7 @@ export function ApplicationPipelineStepper({
   const [pending, startTransition] = useTransition()
   const [rejectOpen, setRejectOpen] = useState(false)
   const currentRef = useRef<HTMLButtonElement>(null)
+  const { openComposeEmail } = useComposeEmail()
 
   const currentIndex = STEPPER_STAGES.indexOf(currentStage)
 
@@ -58,16 +61,35 @@ export function ApplicationPipelineStepper({
       ? STEPPER_STAGES[currentIndex + 1]
       : null
 
+  function promptEmailIfNeeded(stage: PipelineStage) {
+    if (!EMAIL_PROMPT_STAGES.includes(stage) && stage !== 'REJECTED') return
+    const message =
+      stage === 'REJECTED' ? 'Candidate rejected.' : `Moved to ${STAGE_LABELS[stage]}.`
+    toast(message, { action: { label: 'Send email', onClick: openComposeEmail } })
+  }
+
   function moveTo(stage: PipelineStage) {
     if (stage === currentStage || pending) return
-    startTransition(() => transitionStage(applicationId, stage))
+    startTransition(async () => {
+      try {
+        await transitionStage(applicationId, stage)
+        promptEmailIfNeeded(stage)
+      } catch {
+        toast.error('Failed to update the candidate. Please try again.')
+      }
+    })
   }
 
   function handleReject(reason?: RejectionReason, customReason?: string) {
     setRejectOpen(false)
-    startTransition(() =>
-      transitionStage(applicationId, 'REJECTED', reason, customReason)
-    )
+    startTransition(async () => {
+      try {
+        await transitionStage(applicationId, 'REJECTED', reason, customReason)
+        promptEmailIfNeeded('REJECTED')
+      } catch {
+        toast.error('Failed to update the candidate. Please try again.')
+      }
+    })
   }
 
   return (

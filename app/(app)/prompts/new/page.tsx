@@ -1,17 +1,10 @@
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { BackButton } from '@/components/layout/back-button'
 import { PromptCreateForm } from '@/components/prompts/prompt-create-form'
 
 export default function NewPromptPage() {
   return (
     <div className="max-w-3xl space-y-6">
-      <Link
-        href="/prompts"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to Prompt Library
-      </Link>
+      <BackButton />
 
       <div>
         <h1 className="text-2xl font-semibold">New Prompt</h1>

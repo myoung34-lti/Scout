@@ -1,11 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
+import type { DateRange } from 'react-day-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Accordion,
   AccordionContent,
@@ -23,6 +31,13 @@ import { ALL_STAGES, ACTIVE_STAGES, STAGE_LABELS } from '@/lib/pipeline'
 import { useFilterParams } from '@/lib/use-filter-params'
 
 const RATING_OPTIONS = [5, 4, 3, 2, 1]
+const TAGS_COLLAPSED_LIMIT = 8
+
+function parseDateParam(value: string): Date | undefined {
+  if (!value) return undefined
+  const date = new Date(`${value}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
 
 export function CandidateSearchFilters({
   jobs,
@@ -33,10 +48,12 @@ export function CandidateSearchFilters({
   jobLocations: string[]
   tags: { id: string; displayLabel: string }[]
 }) {
-  const { searchParams, setSingle, setMulti, clearAll } = useFilterParams()
+  const { searchParams, setSingle, setMany, setMulti, clearAll } = useFilterParams()
 
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [location, setLocation] = useState(searchParams.get('location') ?? '')
+  const [tagQuery, setTagQuery] = useState('')
+  const [showAllTags, setShowAllTags] = useState(false)
 
   // Tracks the value WE last pushed to the URL for each field, so the
   // resync effect below can tell "the URL changed because our own debounce
@@ -80,7 +97,6 @@ export function CandidateSearchFilters({
       lastPushedLocation.current = urlLocation
       setLocation(urlLocation)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   const stages = searchParams.getAll('stage')
@@ -90,6 +106,9 @@ export function CandidateSearchFilters({
   const minRating = searchParams.get('minRating') ?? 'ALL'
   const pooled = searchParams.get('pooled') === '1'
   const rated = searchParams.get('rated') === '1'
+  const addedPreset = searchParams.get('addedPreset') ?? 'ALL'
+  const addedFrom = searchParams.get('addedFrom') ?? ''
+  const addedTo = searchParams.get('addedTo') ?? ''
 
   const isActiveChecked = ACTIVE_STAGES.every((s) => stages.includes(s))
   const isRejectedChecked = stages.includes('REJECTED')
@@ -98,6 +117,31 @@ export function CandidateSearchFilters({
     const withoutGroup = stages.filter((s) => !group.includes(s))
     setMulti('stage', checked ? [...withoutGroup, ...group] : withoutGroup)
   }
+
+  const dateRange: DateRange | undefined =
+    addedFrom || addedTo
+      ? { from: parseDateParam(addedFrom), to: parseDateParam(addedTo) }
+      : undefined
+
+  function onRangeSelect(range: DateRange | undefined) {
+    setMany({
+      addedFrom: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
+      addedTo: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
+    })
+  }
+
+  // Anything already selected stays visible even when collapsed, so a
+  // narrowed-down list never hides a tag the user has actively filtered by.
+  const matchingTags = tagQuery
+    ? tags.filter((t) => t.displayLabel.toLowerCase().includes(tagQuery.toLowerCase()))
+    : tags
+  const selectedFirst = [
+    ...matchingTags.filter((t) => tagIds.includes(t.id)),
+    ...matchingTags.filter((t) => !tagIds.includes(t.id)),
+  ]
+  const canCollapse = !tagQuery && selectedFirst.length > TAGS_COLLAPSED_LIMIT
+  const visibleTags =
+    canCollapse && !showAllTags ? selectedFirst.slice(0, TAGS_COLLAPSED_LIMIT) : selectedFirst
 
   return (
     <div className="space-y-4">
@@ -164,7 +208,7 @@ export function CandidateSearchFilters({
 
       <Accordion
         type="multiple"
-        defaultValue={['stage', 'jobs', 'candidate']}
+        defaultValue={['stage', 'jobs', 'candidate', 'added']}
         className="rounded-lg border bg-background px-4"
       >
         <AccordionItem value="stage">
@@ -277,36 +321,118 @@ export function CandidateSearchFilters({
                 placeholder="City, state…"
               />
             </div>
-            {tags.length > 0 && (
-              <div>
-                <Label className="mb-1.5 block text-xs text-muted-foreground">
-                  Tags
-                </Label>
-                <div className="flex flex-col gap-2">
-                  {tags.map((t) => (
-                    <label
-                      key={t.id}
-                      className="flex items-center gap-1.5 text-sm"
-                    >
-                      <Checkbox
-                        checked={tagIds.includes(t.id)}
-                        onCheckedChange={(checked) =>
-                          setMulti(
-                            'tagIds',
-                            checked
-                              ? [...tagIds, t.id]
-                              : tagIds.filter((id) => id !== t.id)
-                          )
-                        }
-                      />
-                      {t.displayLabel}
-                    </label>
-                  ))}
-                </div>
-              </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="added">
+          <AccordionTrigger>Added Date</AccordionTrigger>
+          <AccordionContent className="space-y-3">
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground">
+                Candidate Added Date
+              </Label>
+              <Select
+                value={addedPreset}
+                onValueChange={(v) =>
+                  setMany({
+                    addedPreset: v,
+                    ...(v !== 'custom'
+                      ? { addedFrom: undefined, addedTo: undefined }
+                      : {}),
+                  })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Any time</SelectItem>
+                  <SelectItem value="week">Last week</SelectItem>
+                  <SelectItem value="month">Last month</SelectItem>
+                  <SelectItem value="custom">Custom date range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {addedPreset === 'custom' && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal">
+                    <CalendarIcon className="text-muted-foreground" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, 'MMM d, yyyy')} –{' '}
+                          {format(dateRange.to, 'MMM d, yyyy')}
+                        </>
+                      ) : (
+                        format(dateRange.from, 'MMM d, yyyy')
+                      )
+                    ) : (
+                      <span className="text-muted-foreground">Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={onRangeSelect}
+                    numberOfMonths={2}
+                    defaultMonth={dateRange?.from}
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </AccordionContent>
         </AccordionItem>
+
+        {tags.length > 0 && (
+          <AccordionItem value="tags">
+            <AccordionTrigger>Tags</AccordionTrigger>
+            <AccordionContent className="space-y-2">
+              <Input
+                value={tagQuery}
+                onChange={(e) => setTagQuery(e.target.value)}
+                placeholder="Search tags…"
+              />
+              <div className="flex flex-col gap-2">
+                {visibleTags.map((t) => (
+                  <label
+                    key={t.id}
+                    className="flex items-center gap-1.5 text-sm"
+                  >
+                    <Checkbox
+                      checked={tagIds.includes(t.id)}
+                      onCheckedChange={(checked) =>
+                        setMulti(
+                          'tagIds',
+                          checked
+                            ? [...tagIds, t.id]
+                            : tagIds.filter((id) => id !== t.id)
+                        )
+                      }
+                    />
+                    {t.displayLabel}
+                  </label>
+                ))}
+                {matchingTags.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No matching tags.</p>
+                )}
+              </div>
+              {canCollapse && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-0"
+                  onClick={() => setShowAllTags((v) => !v)}
+                >
+                  {showAllTags ? 'Show fewer tags' : `See all ${selectedFirst.length} tags`}
+                </Button>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        )}
       </Accordion>
     </div>
   )

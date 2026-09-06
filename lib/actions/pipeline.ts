@@ -6,15 +6,11 @@ import { requireSession } from '@/lib/session'
 import { STAGE_LABELS, rejectionReasonText } from '@/lib/pipeline'
 import type { PipelineStage, RejectionReason } from '@prisma/client'
 
-const candidateWithTags = {
-  include: { tags: { include: { tag: true } } },
-} as const
-
 export async function getBoardApplications(jobId: string) {
   await requireSession()
   return prisma.application.findMany({
     where: { jobId },
-    include: { candidate: candidateWithTags, job: true },
+    include: { candidate: true, job: true },
     orderBy: { createdAt: 'asc' },
   })
 }
@@ -26,7 +22,7 @@ export async function getAllBoardApplications() {
   await requireSession()
   return prisma.application.findMany({
     where: { job: { status: { in: ['OPEN', 'ON_HOLD'] } } },
-    include: { candidate: candidateWithTags, job: true },
+    include: { candidate: true, job: true },
     orderBy: { createdAt: 'asc' },
   })
 }

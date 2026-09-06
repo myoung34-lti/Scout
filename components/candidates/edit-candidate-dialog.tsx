@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { FileInput } from '@/components/ui/file-input'
 import {
   Select,
@@ -50,7 +49,6 @@ export function EditCandidateDialog({
   users: { id: string; name: string }[]
 }) {
   const [open, setOpen] = useState(false)
-  const [scan, setScan] = useState(false)
   const [parsing, setParsing] = useState(false)
   const [parseNotice, setParseNotice] = useState<string | null>(null)
   const [fields, setFields] = useState({
@@ -84,7 +82,7 @@ export function EditCandidateDialog({
 
   async function handleResumeSelected(files: File[]) {
     const file = files[0]
-    if (!scan || !file) return
+    if (!file) return
 
     setParsing(true)
     setParseNotice(null)
@@ -136,10 +134,6 @@ export function EditCandidateDialog({
               accept=".pdf,.doc,.docx"
               onFilesSelected={handleResumeSelected}
             />
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Checkbox checked={scan} onCheckedChange={(c) => setScan(c === true)} />
-              Scan this resume to fill in the fields below
-            </label>
             {parsing && (
               <p className="text-sm text-muted-foreground">Reading resume…</p>
             )}

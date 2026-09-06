@@ -15,7 +15,7 @@ export function ActiveFilterPills({
   jobs: { id: string; internalName: string }[]
   tags: { id: string; displayLabel: string }[]
 }) {
-  const { searchParams, setSingle, setMulti, removeOne } = useFilterParams()
+  const { searchParams, setSingle, setMany, setMulti, removeOne } = useFilterParams()
 
   const query = searchParams.get('q') ?? ''
   const stages = searchParams.getAll('stage')
@@ -26,6 +26,9 @@ export function ActiveFilterPills({
   const location = searchParams.get('location') ?? ''
   const pooled = searchParams.get('pooled') === '1'
   const rated = searchParams.get('rated') === '1'
+  const addedPreset = searchParams.get('addedPreset')
+  const addedFrom = searchParams.get('addedFrom')
+  const addedTo = searchParams.get('addedTo')
 
   // The Active checkbox adds all ACTIVE_STAGES at once — collapse them back
   // into a single pill instead of showing all eight individually. Any other
@@ -110,6 +113,20 @@ export function ActiveFilterPills({
       onRemove: () => removeOne('tagIds', id),
     })
   })
+  if (addedPreset === 'week' || addedPreset === 'month') {
+    pills.push({
+      key: 'added',
+      label: addedPreset === 'week' ? 'Added: last week' : 'Added: last month',
+      onRemove: () => setSingle('addedPreset', undefined),
+    })
+  } else if (addedPreset === 'custom' && (addedFrom || addedTo)) {
+    pills.push({
+      key: 'added',
+      label: `Added: ${addedFrom || '…'} – ${addedTo || '…'}`,
+      onRemove: () =>
+        setMany({ addedPreset: undefined, addedFrom: undefined, addedTo: undefined }),
+    })
+  }
 
   return (
     <div className="mb-4 space-y-2">

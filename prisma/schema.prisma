@@ -82,20 +82,31 @@ enum InterviewRecommendation {
 // `id` mirrors the corresponding auth.users.id from Supabase Auth —
 // no local password/credential storage here.
 model User {
-  id                    String          @id @db.Uuid
-  name                  String
-  email                 String          @unique
-  role                  Role            @default(RECRUITER)
-  createdAt             DateTime        @default(now())
-  notes                 ActivityNote[]
-  stageChanges          StageHistory[]
-  ownedCandidates       Candidate[]     @relation("CandidateOwner")
-  talentPoolAdds        Candidate[]     @relation("TalentPoolAdder")
-  uploadedResumes       Resume[]
-  interviews            Interview[]
-  createdPrompts        Prompt[]        @relation("PromptCreatedBy")
-  updatedPrompts        Prompt[]        @relation("PromptUpdatedBy")
-  createdPromptVersions PromptVersion[] @relation("PromptVersionCreatedBy")
+  id                           String                 @id @db.Uuid
+  name                         String
+  email                        String                 @unique
+  role                         Role                   @default(RECRUITER)
+  createdAt                    DateTime               @default(now())
+  // Captured once, right after Google sign-in grants the gmail.send scope —
+  // used to mint fresh access tokens for sending candidate email as this
+  // user. Null until they've signed in at least once since this shipped.
+  googleRefreshToken           String?                @db.Text
+  notes                        ActivityNote[]
+  stageChanges                 StageHistory[]
+  ownedCandidates              Candidate[]            @relation("CandidateOwner")
+  talentPoolAdds               Candidate[]            @relation("TalentPoolAdder")
+  uploadedResumes              Resume[]
+  interviews                   Interview[]
+  createdPrompts               Prompt[]               @relation("PromptCreatedBy")
+  updatedPrompts               Prompt[]               @relation("PromptUpdatedBy")
+  createdPromptVersions        PromptVersion[]        @relation("PromptVersionCreatedBy")
+  sentEmails                   CandidateEmail[]
+  createdEmailTemplates        EmailTemplate[]        @relation("EmailTemplateCreatedBy")
+  updatedEmailTemplates        EmailTemplate[]        @relation("EmailTemplateUpdatedBy")
+  createdEmailTemplateVersions EmailTemplateVersion[] @relation("EmailTemplateVersionCreatedBy")
+  generatedInsights            CandidateInsight[]
+  askScoutMessages             AskScoutMessage[]
+  savedReports                 SavedReport[]
 }
 
 model Job {
@@ -119,7 +130,7 @@ model Job {
 }
 
 model Candidate {
-  id                    String           @id @default(cuid())
+  id                    String            @id @default(cuid())
   firstName             String
   lastName              String
   email                 String?
@@ -130,29 +141,97 @@ model Candidate {
   source                CandidateSource?
   location              String?
   rating                Int?
-  ownerId               String?          @db.Uuid
-  owner                 User?            @relation("CandidateOwner", fields: [ownerId], references: [id])
-  inTalentPool          Boolean          @default(false)
+  ownerId               String?           @db.Uuid
+  owner                 User?             @relation("CandidateOwner", fields: [ownerId], references: [id])
+  inTalentPool          Boolean           @default(false)
   talentPoolAddedAt     DateTime?
-  talentPoolAddedById   String?          @db.Uuid
-  talentPoolAddedBy     User?            @relation("TalentPoolAdder", fields: [talentPoolAddedById], references: [id])
-  greenhouseCandidateId BigInt?          @unique
+  talentPoolAddedById   String?           @db.Uuid
+  talentPoolAddedBy     User?             @relation("TalentPoolAdder", fields: [talentPoolAddedById], references: [id])
+  greenhouseCandidateId BigInt?           @unique
   // Both resume-scraped — workHistory is a WorkHistoryEntry[] (see
   // lib/actions/resume-parser.ts), wholesale-replaced on each scan rather
   // than modeled relationally, since it's read-only derived data, not
   // something anyone edits entry-by-entry in the app.
   yearsExperience       Float?
   workHistory           Json?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
   applications          Application[]
   tags                  CandidateTag[]
   notes                 ActivityNote[]
   resumes               Resume[]
   interviews            Interview[]
+  emails                CandidateEmail[]
+  insight               CandidateInsight?
+  askScoutMessages      AskScoutMessage[]
 
   @@index([email])
   @@index([inTalentPool])
+  @@index([createdAt])
+}
+
+// A cached, AI-generated summary of a candidate's recruiting history —
+// distilled from CandidateContext (see lib/ai/candidate-context.ts), not a
+// second source of truth. Regenerated wholesale on demand (never merged),
+// never regenerated automatically. Every field is nullable — a field is
+// null when the underlying context doesn't support an answer, displayed as
+// "Not recorded" rather than persisting that string literally (keeps the
+// data layer clean for things like the email-personalization prompt, which
+// simply omits null fields instead of citing "Not recorded" as if it were
+// real signal).
+model CandidateInsight {
+  id                     String    @id @default(cuid())
+  candidateId            String    @unique
+  currentRoleCompany     String?   @db.Text
+  desiredCompensation    String?   @db.Text
+  whatTheyWantNext       String?   @db.Text
+  motivationForChange    String?   @db.Text
+  onsiteRemotePreference String?   @db.Text
+  locationRelocation     String?   @db.Text
+  technicalInterests     String?   @db.Text
+  personalInterests      String?   @db.Text
+  personalDetails        String?   @db.Text
+  concernsOpenQuestions  String?   @db.Text
+  generatedAt            DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  generatedById          String    @db.Uuid
+  candidate              Candidate @relation(fields: [candidateId], references: [id])
+  generatedBy            User      @relation(fields: [generatedById], references: [id])
+}
+
+// A persisted Ask Scout Q&A pair — saved so a recruiter (any recruiter,
+// same shared-record model as ActivityNote) doesn't have to re-ask the
+// same question, and so the answer survives a page reload. Not a full
+// multi-turn chat — each row is a single independent question/answer,
+// same as how Ask Scout itself has no memory of prior questions in a
+// session today.
+model AskScoutMessage {
+  id          String    @id @default(cuid())
+  candidateId String
+  askedById   String    @db.Uuid
+  question    String    @db.Text
+  answer      String    @db.Text
+  createdAt   DateTime  @default(now())
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+  askedBy     User      @relation(fields: [askedById], references: [id])
+
+  @@index([candidateId, createdAt])
+}
+
+// A saved report configuration — never a frozen snapshot of results.
+// Reopening always re-runs `definition` against live data via
+// lib/reporting/reporting-service.ts. Shared with everyone, same
+// collaborative model as the rest of Scout.
+model SavedReport {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  visualization String
+  definition    Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String   @db.Uuid
+  createdBy     User     @relation(fields: [createdById], references: [id])
 }
 
 model Resume {
@@ -188,9 +267,14 @@ model Application {
   history                 StageHistory[]
   notes                   ActivityNote[]
   interviews              Interview[]
+  emails                  CandidateEmail[]
 
   @@index([candidateId])
   @@index([jobId])
+  @@index([stage])
+  @@index([hiredAt])
+  @@index([rejectedAt])
+  @@index([appliedAt])
 }
 
 model StageHistory {
@@ -204,6 +288,8 @@ model StageHistory {
   changedBy     User           @relation(fields: [changedById], references: [id])
 
   @@index([applicationId])
+  @@index([changedAt])
+  @@index([changedById])
 }
 
 model Tag {
@@ -256,7 +342,13 @@ model Interview {
   // lets us trace which prompt produced a given summary later, without
   // duplicating the prompt text itself into the Interview record.
   firefliesPromptVersionId String?
+  // Intro-call-only: expected/discussed compensation, captured while it's
+  // top of mind rather than relying on notes.
+  compensationNotes        String?
   recommendation           InterviewRecommendation?
+  // Free-text elaboration on `recommendation` — required alongside it
+  // before an interview can be marked complete, for every interview type.
+  recommendationNotes      String?
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
   completedAt              DateTime?
@@ -266,12 +358,13 @@ model Interview {
   firefliesPromptVersion   PromptVersion?           @relation(fields: [firefliesPromptVersionId], references: [id])
 
   @@index([candidateId, createdAt])
+  @@index([interviewerId, completedAt])
+  @@index([status, completedAt])
 }
 
 enum PromptCategory {
   INTERVIEW
   CANDIDATE
-  COMMUNICATION
   ANALYSIS
   SYSTEM
 }
@@ -326,4 +419,98 @@ model PromptVersion {
 
   @@unique([promptId, version])
   @@index([promptId, createdAt])
+}
+
+// The email-template counterpart to Prompt/PromptVersion — same versioned
+// pattern, but simpler: no `key` (templates are picked from a dropdown by
+// name, never referenced by code) and no `interviewType`.
+model EmailTemplate {
+  id               String                 @id @default(cuid())
+  name             String
+  description      String?
+  isActive         Boolean                @default(true)
+  currentVersionId String?                @unique
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  createdById      String                 @db.Uuid
+  updatedById      String                 @db.Uuid
+  createdBy        User                   @relation("EmailTemplateCreatedBy", fields: [createdById], references: [id])
+  updatedBy        User                   @relation("EmailTemplateUpdatedBy", fields: [updatedById], references: [id])
+  currentVersion   EmailTemplateVersion?  @relation("EmailTemplateCurrentVersion", fields: [currentVersionId], references: [id])
+  versions         EmailTemplateVersion[] @relation("EmailTemplateVersions")
+}
+
+// Immutable history, same pattern as PromptVersion.
+model EmailTemplateVersion {
+  id              String           @id @default(cuid())
+  emailTemplateId String
+  version         Int
+  subject         String
+  bodyHtml        String           @db.Text
+  createdAt       DateTime         @default(now())
+  createdById     String           @db.Uuid
+  emailTemplate   EmailTemplate    @relation("EmailTemplateVersions", fields: [emailTemplateId], references: [id])
+  createdBy       User             @relation("EmailTemplateVersionCreatedBy", fields: [createdById], references: [id])
+  currentFor      EmailTemplate?   @relation("EmailTemplateCurrentVersion")
+  usedForEmails   CandidateEmail[]
+
+  @@unique([emailTemplateId, version])
+  @@index([emailTemplateId, createdAt])
+}
+
+// A small library of static, company-wide substitution values (Company
+// Name, Company Name Short, etc.) — admin-managed, unversioned, distinct
+// from the fixed per-candidate/job/recruiter dynamic variables which are
+// code-backed (see lib/email-variables.ts) rather than DB-editable.
+model EmailVariable {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A single sent candidate email — full content lives here for the
+// Communication tab; the Activity Feed only shows a one-line summary.
+enum EmailStatus {
+  SCHEDULED
+  // Transient "claimed by the cron sender, delivery in flight" state — the
+  // idempotency guard against Cloud Scheduler's at-least-once delivery.
+  // Gmail's send API has no idempotency key, so a row must be atomically
+  // claimed out of SCHEDULED before the Gmail call happens, not after.
+  SENDING
+  SENT
+  CANCELED
+  FAILED
+}
+
+model CandidateEmail {
+  id                     String                @id @default(cuid())
+  candidateId            String
+  applicationId          String?
+  senderId               String                @db.Uuid
+  toAddress              String
+  subject                String
+  bodyHtml               String                @db.Text
+  // Which template version this was generated from, if any — same audit
+  // pattern as Interview.firefliesPromptVersionId.
+  emailTemplateVersionId String?
+  status                 EmailStatus           @default(SENT)
+  // Set for a scheduled send; null for one sent immediately.
+  scheduledFor           DateTime?
+  // When it actually went out — distinct from createdAt, which for a
+  // scheduled email is when it was composed/queued, not sent.
+  sentAt                 DateTime?
+  failureReason          String?               @db.Text
+  attempts               Int                   @default(0)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  candidate              Candidate             @relation(fields: [candidateId], references: [id])
+  application            Application?          @relation(fields: [applicationId], references: [id])
+  sender                 User                  @relation(fields: [senderId], references: [id])
+  emailTemplateVersion   EmailTemplateVersion? @relation(fields: [emailTemplateVersionId], references: [id])
+
+  @@index([candidateId, createdAt])
+  @@index([status, scheduledFor])
 }

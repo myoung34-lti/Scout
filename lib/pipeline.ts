@@ -79,6 +79,18 @@ export const INTERVIEW_STAGES: PipelineStage[] = [
 
 export const ALL_STAGES: PipelineStage[] = [...ACTIVE_STAGES, ...TERMINAL_STAGES]
 
+// Advancing into one of these stages (or rejecting, checked separately)
+// prompts a "send an email?" toast — the earlier Applied/Screening bump and
+// Offer/Hired are deliberately excluded, since those aren't typically
+// candidate-facing moments handled through Scout's email templates.
+export const EMAIL_PROMPT_STAGES: PipelineStage[] = [
+  'INTRODUCTORY_CALL',
+  'BEHAVIORAL_INTERVIEW',
+  'TECHNICAL_INTERVIEW',
+  'EXECUTIVE_INTERVIEW',
+  'CLIENT_INTERVIEW',
+]
+
 // The formal interview process proper — from the first real interview
 // (Behavioral) through Offer — used for the job detail page's summary cards.
 export const FORMAL_INTERVIEW_STAGES: PipelineStage[] = [

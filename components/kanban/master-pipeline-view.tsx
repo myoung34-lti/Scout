@@ -7,10 +7,24 @@ import { StageVisibilityToggle } from '@/components/kanban/stage-visibility-togg
 import { ALL_STAGES, DEFAULT_VISIBLE_STAGES } from '@/lib/pipeline'
 import type { PipelineStage } from '@prisma/client'
 
+type EmailTemplate = {
+  id: string
+  name: string
+  currentVersion: { id: string; subject: string; bodyHtml: string } | null
+}
+
 export function MasterPipelineView({
   applications,
+  recruiterName,
+  recruiterEmail,
+  staticVariables,
+  emailTemplates,
 }: {
   applications: ApplicationWithCandidate[]
+  recruiterName: string
+  recruiterEmail: string
+  staticVariables: Record<string, string>
+  emailTemplates: EmailTemplate[]
 }) {
   const [visibleStages, setVisibleStages] = useState<PipelineStage[]>(
     DEFAULT_VISIBLE_STAGES
@@ -31,7 +45,14 @@ export function MasterPipelineView({
         onChange={setVisibleStages}
         counts={counts}
       />
-      <PipelineBoard applications={applications} stages={visibleStages} />
+      <PipelineBoard
+        applications={applications}
+        stages={visibleStages}
+        recruiterName={recruiterName}
+        recruiterEmail={recruiterEmail}
+        staticVariables={staticVariables}
+        emailTemplates={emailTemplates}
+      />
     </div>
   )
 }

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useDraggable } from '@dnd-kit/core'
 import type { ApplicationWithCandidate } from '@/components/kanban/pipeline-board'
 import { StarRating } from '@/components/candidates/star-rating'
-import { Badge } from '@/components/ui/badge'
 import { rejectionReasonText } from '@/lib/pipeline'
 
 export function ApplicationCard({
@@ -50,15 +49,6 @@ export function ApplicationCard({
       </div>
       {subtitle && (
         <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-      )}
-      {application.candidate.tags && application.candidate.tags.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {application.candidate.tags.map((ct) => (
-            <Badge key={ct.tagId} variant="outline" className="text-[10px]">
-              {ct.tag.displayLabel}
-            </Badge>
-          ))}
-        </div>
       )}
     </div>
   )

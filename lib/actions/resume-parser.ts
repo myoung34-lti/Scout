@@ -1,7 +1,15 @@
 'use server'
 
 import Anthropic from '@anthropic-ai/sdk'
+import DOMMatrix from 'dommatrix'
 import { requireSession } from '@/lib/session'
+
+// pdf-parse's PDF text extraction runs pdfjs-dist internals that reference
+// DOMMatrix even outside canvas rendering — a browser global with no Node
+// equivalent, so it throws unless polyfilled before that code runs.
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  globalThis.DOMMatrix = DOMMatrix
+}
 
 export type WorkHistoryEntry = {
   title: string
@@ -30,9 +38,8 @@ export type ParseResumeResult =
 
 const MAX_TEXT_CHARS = 15000
 
-async function extractText(file: File): Promise<string | null> {
-  const name = file.name.toLowerCase()
-  const bytes = Buffer.from(await file.arrayBuffer())
+async function extractText(bytes: Buffer, fileName: string): Promise<string | null> {
+  const name = fileName.toLowerCase()
 
   if (name.endsWith('.pdf')) {
     const { PDFParse } = await import('pdf-parse')
@@ -57,6 +64,18 @@ async function extractText(file: File): Promise<string | null> {
 }
 
 export async function parseResume(file: File): Promise<ParseResumeResult> {
+  const bytes = Buffer.from(await file.arrayBuffer())
+  return parseResumeFromBytes(bytes, file.name)
+}
+
+// Takes already-read bytes rather than a File so callers that also need the
+// raw bytes for something else (e.g. saving the file) never read the same
+// File twice — not every runtime's File/Blob supports being read more than
+// once.
+export async function parseResumeFromBytes(
+  bytes: Buffer,
+  fileName: string
+): Promise<ParseResumeResult> {
   await requireSession()
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -65,8 +84,9 @@ export async function parseResume(file: File): Promise<ParseResumeResult> {
 
   let text: string | null
   try {
-    text = await extractText(file)
-  } catch {
+    text = await extractText(bytes, fileName)
+  } catch (err) {
+    console.error('extractText failed for', fileName, err)
     return { error: "Couldn't read this file." }
   }
 

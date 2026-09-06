@@ -36,6 +36,8 @@ export default async function InterviewPage({
       initialNotes={interview.notes ?? ''}
       initialFireflies={interview.firefliesSummary ?? ''}
       initialRecommendation={interview.recommendation}
+      initialRecommendationNotes={interview.recommendationNotes ?? ''}
+      initialCompensationNotes={interview.compensationNotes ?? ''}
       initialApplicationId={interview.applicationId}
       applications={candidate.applications.map((app) => ({
         id: app.id,

@@ -1,6 +1,5 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { BackButton } from '@/components/layout/back-button'
 import { getPrompt } from '@/lib/actions/prompts'
 import { PromptEditor } from '@/components/prompts/prompt-editor'
 
@@ -16,13 +15,7 @@ export default async function PromptEditorPage({
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/prompts"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to Prompt Library
-      </Link>
+      <BackButton />
 
       <div>
         <h1 className="text-2xl font-semibold">{prompt.name}</h1>

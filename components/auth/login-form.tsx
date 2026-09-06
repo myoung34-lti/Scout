@@ -1,49 +1,48 @@
 'use client'
 
-import { useActionState } from 'react'
-import { authenticate } from '@/lib/actions/auth'
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 
 export function LoginForm() {
-  const [errorMessage, formAction, pending] = useActionState(
-    authenticate,
-    undefined
-  )
+  const [googlePending, setGooglePending] = useState(false)
+
+  async function signInWithGoogle() {
+    setGooglePending(true)
+    const supabase = createClient()
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        // gmail.send: send-as-the-user for the candidate-emailing feature.
+        // gmail.settings.basic: read-only access to their Gmail "Send mail
+        // as" signature, so Compose Email can use their real signature
+        // instead of a separate Scout-owned copy. offline access is what
+        // makes Google issue a refresh token — captured once in the auth
+        // callback and stored so we can act as the user without them being
+        // actively logged in at send time.
+        scopes:
+          'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.settings.basic',
+        queryParams: { access_type: 'offline' },
+      },
+    })
+  }
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <form action={formAction} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          {errorMessage && (
-            <p className="text-sm text-destructive">{errorMessage}</p>
-          )}
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
+        <Button
+          type="button"
+          className="w-full"
+          disabled={googlePending}
+          onClick={signInWithGoogle}
+        >
+          {googlePending ? 'Redirecting…' : 'Continue with Google'}
+        </Button>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Sign in with your logictechnologyinc.com Google account.
+        </p>
       </CardContent>
     </Card>
   )

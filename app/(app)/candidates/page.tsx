@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { searchCandidates } from '@/lib/actions/search'
+import { CANDIDATES_PAGE_SIZE } from '@/lib/candidate-search'
+import type { AddedDatePreset } from '@/lib/candidate-search'
 import { listJobs, listDistinctLocations } from '@/lib/actions/jobs'
 import { listTagOptions } from '@/lib/actions/tags'
 import { Button } from '@/components/ui/button'
@@ -9,8 +11,11 @@ import { STAGE_LABELS, ALL_STAGES } from '@/lib/pipeline'
 import { StarRating } from '@/components/candidates/star-rating'
 import { CandidateSearchFilters } from '@/components/candidates/candidate-search-filters'
 import { ActiveFilterPills } from '@/components/candidates/active-filter-pills'
+import { CandidatesPagination } from '@/components/candidates/candidates-pagination'
 import type { PipelineStage } from '@prisma/client'
 import { getCandidateDisplayTitle, findCurrentApplication } from '@/lib/candidate-type'
+
+const ADDED_DATE_PRESETS: AddedDatePreset[] = ['week', 'month', 'custom']
 
 function toArray(value: string | string[] | undefined): string[] {
   if (!value) return []
@@ -35,6 +40,12 @@ export default async function CandidatesPage({
   const tagIds = toArray(params.tagIds)
   const pooled = params.pooled === '1'
   const rated = params.rated === '1'
+  const addedPresetParam =
+    typeof params.addedPreset === 'string' ? params.addedPreset : undefined
+  const addedFrom = typeof params.addedFrom === 'string' ? params.addedFrom : undefined
+  const addedTo = typeof params.addedTo === 'string' ? params.addedTo : undefined
+  const pageParam = typeof params.page === 'string' ? Number(params.page) : 1
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
 
   const stages = stageParams.filter((s): s is PipelineStage =>
     ALL_STAGES.includes(s as PipelineStage)
@@ -44,8 +55,9 @@ export default async function CandidatesPage({
     jobLocationParam && jobLocationParam !== 'ALL' ? jobLocationParam : undefined
   const minRating =
     minRatingParam && minRatingParam !== 'ALL' ? Number(minRatingParam) : undefined
+  const addedPreset = ADDED_DATE_PRESETS.find((p) => p === addedPresetParam)
 
-  const [candidates, jobs, jobLocations, tags] = await Promise.all([
+  const [{ candidates, totalCount }, jobs, jobLocations, tags] = await Promise.all([
     searchCandidates({
       query,
       stages,
@@ -56,11 +68,17 @@ export default async function CandidatesPage({
       tagIds,
       pooled,
       rated,
+      addedPreset,
+      addedFrom,
+      addedTo,
+      page,
     }),
     listJobs(),
     listDistinctLocations(),
     listTagOptions(),
   ])
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / CANDIDATES_PAGE_SIZE))
 
   const jobOptions = jobs.map((j) => ({ id: j.id, internalName: j.internalName }))
 
@@ -86,14 +104,15 @@ export default async function CandidatesPage({
         </aside>
 
         <div>
-          <ActiveFilterPills count={candidates.length} jobs={jobOptions} tags={tags} />
+          <ActiveFilterPills count={totalCount} jobs={jobOptions} tags={tags} />
 
           {candidates.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No candidates match these filters.
             </p>
           ) : (
-            <ul className="divide-y rounded-lg border bg-background">
+            <div className="rounded-lg border bg-background">
+            <ul className="divide-y">
               {candidates.map((c) => {
                 const currentApplication = findCurrentApplication(c)
                 return (
@@ -133,6 +152,8 @@ export default async function CandidatesPage({
                 )
               })}
             </ul>
+            <CandidatesPagination page={page} totalPages={totalPages} />
+            </div>
           )}
         </div>
       </div>

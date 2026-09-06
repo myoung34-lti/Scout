@@ -7,34 +7,48 @@ import { toast } from 'sonner'
 import { transitionStage } from '@/lib/actions/pipeline'
 import { StageColumn } from '@/components/kanban/stage-column'
 import { RejectionReasonDialog } from '@/components/kanban/rejection-reason-dialog'
-import { ALL_STAGES } from '@/lib/pipeline'
+import { ComposeEmailDialog } from '@/components/candidates/compose-email-dialog'
+import { ALL_STAGES, STAGE_LABELS, EMAIL_PROMPT_STAGES } from '@/lib/pipeline'
 import type {
   Application,
   Candidate,
-  CandidateTag,
   Job,
   PipelineStage,
   RejectionReason,
-  Tag,
 } from '@prisma/client'
 
 export type ApplicationWithCandidate = Application & {
-  candidate: Candidate & { tags?: (CandidateTag & { tag: Tag })[] }
+  candidate: Candidate
   job?: Job
+}
+
+type EmailTemplate = {
+  id: string
+  name: string
+  currentVersion: { id: string; subject: string; bodyHtml: string } | null
 }
 
 export function PipelineBoard({
   applications,
   stages = ALL_STAGES,
+  recruiterName,
+  recruiterEmail,
+  staticVariables,
+  emailTemplates,
 }: {
   applications: ApplicationWithCandidate[]
   stages?: PipelineStage[]
+  recruiterName: string
+  recruiterEmail: string
+  staticVariables: Record<string, string>
+  emailTemplates: EmailTemplate[]
 }) {
   const [items, setItems] = useState(applications)
   const [pendingRejection, setPendingRejection] = useState<{
     applicationId: string
     previousStage: PipelineStage
   } | null>(null)
+  const [composeFor, setComposeFor] = useState<ApplicationWithCandidate | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
@@ -46,14 +60,25 @@ export function PipelineBoard({
     rejectionReason?: RejectionReason,
     customRejectionReason?: string
   ) {
-    transitionStage(applicationId, toStage, rejectionReason, customRejectionReason).catch(() => {
-      setItems((prev) =>
-        prev.map((a) =>
-          a.id === applicationId ? { ...a, stage: previousStage } : a
+    transitionStage(applicationId, toStage, rejectionReason, customRejectionReason)
+      .then(() => {
+        if (!EMAIL_PROMPT_STAGES.includes(toStage) && toStage !== 'REJECTED') return
+        const application = items.find((a) => a.id === applicationId)
+        if (!application) return
+        const message =
+          toStage === 'REJECTED' ? 'Candidate rejected.' : `Moved to ${STAGE_LABELS[toStage]}.`
+        toast(message, {
+          action: { label: 'Send email', onClick: () => setComposeFor(application) },
+        })
+      })
+      .catch(() => {
+        setItems((prev) =>
+          prev.map((a) =>
+            a.id === applicationId ? { ...a, stage: previousStage } : a
+          )
         )
-      )
-      toast.error('Failed to move candidate. Please try again.')
-    })
+        toast.error('Failed to move candidate. Please try again.')
+      })
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -112,6 +137,28 @@ export function PipelineBoard({
         open={pendingRejection !== null}
         onResolve={handleRejectionResolved}
       />
+      {composeFor && (
+        <ComposeEmailDialog
+          candidateId={composeFor.candidate.id}
+          candidateEmail={composeFor.candidate.email}
+          candidateFirstName={composeFor.candidate.firstName}
+          candidateLastName={composeFor.candidate.lastName}
+          candidateCurrentCompany={composeFor.candidate.currentCompany ?? ''}
+          candidateCurrentTitle={composeFor.candidate.currentTitle ?? ''}
+          jobTitle={composeFor.job?.internalName ?? ''}
+          jobLocation={composeFor.job?.location ?? ''}
+          applicationId={composeFor.id}
+          recruiterName={recruiterName}
+          recruiterEmail={recruiterEmail}
+          staticVariables={staticVariables}
+          emailTemplates={emailTemplates}
+          open
+          onOpenChange={(next) => {
+            if (!next) setComposeFor(null)
+          }}
+          showTrigger={false}
+        />
+      )}
     </DndContext>
   )
 }

@@ -146,7 +146,9 @@ export function PromptCreateForm() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="field-sizing-fixed resize-none overflow-y-auto font-mono text-sm"
-          placeholder={'Write the instructions Scout AI will use…\n\nUse {{variable_name}} for placeholders that will be filled in later.'}
+          placeholder={
+            'Write the instructions Scout AI will use…\n\nUse {{variable_name}} for placeholders that will be filled in later.'
+          }
         />
         {state?.errors?.content && (
           <p className="text-sm text-destructive">{state.errors.content[0]}</p>

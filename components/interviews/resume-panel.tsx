@@ -22,7 +22,9 @@ export function ResumePanel({
   }
 
   const url = `/api/resumes/${resume.id}`
-  const isPdf = resume.fileName.toLowerCase().endsWith('.pdf')
+  const fileName = resume.fileName.toLowerCase()
+  const isPdf = fileName.endsWith('.pdf')
+  const isDocx = fileName.endsWith('.docx')
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-background">
@@ -37,6 +39,12 @@ export function ResumePanel({
       </div>
       {isPdf ? (
         <iframe src={url} title="Resume" className="min-h-[70vh] w-full flex-1" />
+      ) : isDocx ? (
+        <iframe
+          src={`${url}/preview`}
+          title="Resume"
+          className="min-h-[70vh] w-full flex-1 bg-white"
+        />
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
           <FileText className="size-8 text-muted-foreground" />

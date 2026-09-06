@@ -1,8 +1,12 @@
 import { getAllBoardApplications } from '@/lib/actions/pipeline'
+import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
 import { MasterPipelineView } from '@/components/kanban/master-pipeline-view'
 
 export default async function PipelinePage() {
-  const applications = await getAllBoardApplications()
+  const [applications, composeGlobals] = await Promise.all([
+    getAllBoardApplications(),
+    getComposeEmailGlobals(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -12,7 +16,13 @@ export default async function PipelinePage() {
           Every candidate in process across all open and on-hold positions.
         </p>
       </div>
-      <MasterPipelineView applications={applications} />
+      <MasterPipelineView
+        applications={applications}
+        recruiterName={composeGlobals.recruiterName}
+        recruiterEmail={composeGlobals.recruiterEmail}
+        staticVariables={composeGlobals.staticVariables}
+        emailTemplates={composeGlobals.emailTemplates}
+      />
     </div>
   )
 }

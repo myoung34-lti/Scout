@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
 import { saveResumeFile, readResumeFile } from '@/lib/storage'
+import { parseResumeFromBytes } from '@/lib/actions/resume-parser'
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -40,6 +41,71 @@ export async function uploadResumeForCandidate(
       uploadedById: user.id,
     },
   })
+
+  // Every resume upload gets scanned automatically. Skills are additive —
+  // a new resume never erases a tag that came from somewhere else — but
+  // work history/years experience reflect a single current snapshot, so a
+  // newer resume's version replaces whatever was on file. Parsing failures
+  // (unsupported format, unreadable file) are silent here: the upload
+  // itself already succeeded, which is the important part.
+  const parsed = await parseResumeFromBytes(bytes, file.name)
+  console.error(
+    'resume scan result for',
+    file.name,
+    'data' in parsed
+      ? {
+          skillsCount: parsed.data.skills?.length ?? 0,
+          workHistoryCount: parsed.data.workHistory?.length ?? 0,
+          yearsExperience: parsed.data.yearsExperience,
+        }
+      : parsed
+  )
+  const skills =
+    'data' in parsed
+      ? (parsed.data.skills ?? []).filter((s) => s.trim() !== '')
+      : []
+
+  if (skills.length > 0) {
+    await Promise.all(
+      skills.map(async (rawLabel) => {
+        const displayLabel = rawLabel.trim()
+        const label = displayLabel.toLowerCase()
+        const tag = await prisma.tag.upsert({
+          where: { label },
+          update: {},
+          create: { label, displayLabel },
+        })
+        await prisma.candidateTag.upsert({
+          where: { candidateId_tagId: { candidateId, tagId: tag.id } },
+          update: {},
+          create: { candidateId, tagId: tag.id },
+        })
+      })
+    )
+    await prisma.activityNote.create({
+      data: {
+        candidateId,
+        authorId: user.id,
+        body: `Added skills from resume scan: ${skills.join(', ')}`,
+      },
+    })
+  }
+
+  if ('data' in parsed) {
+    const { workHistory, yearsExperience } = parsed.data
+    if (
+      (workHistory && workHistory.length > 0) ||
+      typeof yearsExperience === 'number'
+    ) {
+      await prisma.candidate.update({
+        where: { id: candidateId },
+        data: {
+          ...(workHistory && workHistory.length > 0 ? { workHistory } : {}),
+          ...(typeof yearsExperience === 'number' ? { yearsExperience } : {}),
+        },
+      })
+    }
+  }
 
   revalidatePath(`/candidates/${candidateId}`)
   return undefined

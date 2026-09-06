@@ -1,16 +1,23 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText, ArrowLeft } from 'lucide-react'
+import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText } from 'lucide-react'
+import { BackButton } from '@/components/layout/back-button'
 import { getCandidate } from '@/lib/actions/candidates'
 import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
 import { ResumeUploader } from '@/components/candidates/resume-uploader'
 import { CandidateRating } from '@/components/candidates/candidate-rating'
 import { ActivityFeed } from '@/components/candidates/activity-feed'
+import { AskScoutCard } from '@/components/candidates/ask-scout-card'
+import { CandidateInsightsCard } from '@/components/candidates/candidate-insights-card'
+import { ComposeEmailProvider } from '@/components/candidates/compose-email-provider'
 import { TagInput } from '@/components/candidates/tag-input'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { listTags } from '@/lib/actions/tags'
 import { listJobs } from '@/lib/actions/jobs'
 import { listUsers } from '@/lib/actions/users'
+import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
+import { requireSession } from '@/lib/session'
 import { getCandidateDisplayTitle, findRelevantApplication } from '@/lib/candidate-type'
 import { AddToJobDialog } from '@/components/candidates/add-to-job-dialog'
 import { TalentPoolToggle } from '@/components/candidates/talent-pool-toggle'
@@ -62,11 +69,13 @@ export default async function CandidateProfilePage({
   params: Promise<{ candidateId: string }>
 }) {
   const { candidateId } = await params
-  const [candidate, allTags, allJobs, allUsers] = await Promise.all([
+  await requireSession()
+  const [candidate, allTags, allJobs, allUsers, composeGlobals] = await Promise.all([
     getCandidate(candidateId),
     listTags(),
     listJobs(),
     listUsers(),
+    getComposeEmailGlobals(),
   ])
 
   if (!candidate) notFound()
@@ -93,15 +102,31 @@ export default async function CandidateProfilePage({
   const initials =
     `${candidate.firstName[0] ?? ''}${candidate.lastName[0] ?? ''}`.toUpperCase()
 
+  const latestActivityAt = [
+    candidate.updatedAt,
+    ...candidate.notes.map((n) => n.createdAt),
+    ...candidate.interviews.map((i) => i.updatedAt),
+    ...candidate.resumes.map((r) => r.uploadedAt),
+  ].reduce((latest, d) => (d > latest ? d : latest), candidate.updatedAt)
+
   return (
+    <ComposeEmailProvider
+      candidateId={candidate.id}
+      candidateEmail={candidate.email}
+      candidateFirstName={candidate.firstName}
+      candidateLastName={candidate.lastName}
+      candidateCurrentCompany={candidate.currentCompany ?? ''}
+      candidateCurrentTitle={candidate.currentTitle ?? ''}
+      jobTitle={relevantApplication?.job.internalName ?? ''}
+      jobLocation={relevantApplication?.job.location ?? ''}
+      applicationId={relevantApplication?.id ?? null}
+      recruiterName={composeGlobals.recruiterName}
+      recruiterEmail={composeGlobals.recruiterEmail}
+      staticVariables={composeGlobals.staticVariables}
+      emailTemplates={composeGlobals.emailTemplates}
+    >
     <div className="space-y-6">
-      <Link
-        href="/candidates"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to all candidates
-      </Link>
+      <BackButton />
 
       <div>
         <div className="flex items-start justify-between gap-4">
@@ -195,12 +220,9 @@ export default async function CandidateProfilePage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <div className="rounded-lg border bg-background p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                Applications
-              </h2>
+            <div className="mb-3 flex items-center justify-end">
               <AddToJobDialog
                 candidateId={candidate.id}
                 eligibleJobs={eligibleJobs}
@@ -244,17 +266,45 @@ export default async function CandidateProfilePage({
             )}
           </div>
 
-          <div className="rounded-lg border bg-background p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-              Activity
-            </h2>
-            <ActivityFeed
-              candidateId={candidate.id}
-              notes={candidate.notes}
-              interviews={candidate.interviews}
-              applications={candidate.applications}
-            />
-          </div>
+          <Tabs defaultValue="activity">
+            <TabsList>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="insights">Candidate Insight</TabsTrigger>
+              <TabsTrigger value="ask-scout">Ask Scout</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="activity">
+              <div className="rounded-lg border bg-background p-4">
+                <ActivityFeed
+                  candidateId={candidate.id}
+                  notes={candidate.notes}
+                  interviews={candidate.interviews}
+                  emails={candidate.emails}
+                  applications={candidate.applications}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="insights">
+              <div className="rounded-lg border bg-background p-4">
+                <CandidateInsightsCard
+                  candidateId={candidate.id}
+                  insight={candidate.insight}
+                  latestActivityAt={latestActivityAt}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="ask-scout">
+              <div className="rounded-lg border bg-background p-4">
+                <AskScoutCard
+                  candidateId={candidate.id}
+                  messages={candidate.askScoutMessages}
+                  currentUserName={composeGlobals.recruiterName}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="space-y-4">
@@ -326,5 +376,6 @@ export default async function CandidateProfilePage({
         </div>
       </div>
     </div>
+    </ComposeEmailProvider>
   )
 }

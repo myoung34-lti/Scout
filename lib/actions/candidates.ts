@@ -44,6 +44,15 @@ export async function getCandidate(candidateId: string) {
         include: { interviewer: true },
         orderBy: { createdAt: 'desc' },
       },
+      emails: {
+        include: { sender: true },
+        orderBy: { createdAt: 'desc' },
+      },
+      insight: true,
+      askScoutMessages: {
+        include: { askedBy: true },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 }
