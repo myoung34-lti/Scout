@@ -30,7 +30,7 @@ export function TrendChart({
   const { setSingle } = useFilterParams()
 
   return (
-    <div className="rounded-lg border bg-background p-5">
+    <div className="rounded-xl border border-border bg-card shadow-xs p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Recruiting Activity Over Time</h2>
         <div className="flex gap-1.5">
@@ -57,16 +57,16 @@ export function TrendChart({
             <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
             <Tooltip />
             <Legend />
-            <Line type="monotone" dataKey="added" name="Added" stroke="#2563eb" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="added" name="Added" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
             <Line
               type="monotone"
               dataKey="interviewed"
               name="Interviewed"
-              stroke="#f59e0b"
+              stroke="var(--chart-4)"
               strokeWidth={2}
               dot={false}
             />
-            <Line type="monotone" dataKey="hired" name="Hired" stroke="#16a34a" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="hired" name="Hired" stroke="var(--chart-3)" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       )}

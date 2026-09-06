@@ -70,7 +70,7 @@ export function InterviewPageShell({
 
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">{candidateName}</h1>
+          <h1 className="page-title">{candidateName}</h1>
           <CandidateRating candidateId={candidateId} initialRating={candidateRating} />
         </div>
         <p className="text-sm text-muted-foreground">{subtitle}</p>

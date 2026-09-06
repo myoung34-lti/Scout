@@ -57,7 +57,7 @@ export default async function JobDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold">{job.internalName}</h1>
+            <h1 className="page-title">{job.internalName}</h1>
             <Badge>{STATUS_LABEL[job.status]}</Badge>
           </div>
           <p className="text-muted-foreground">
@@ -90,7 +90,7 @@ export default async function JobDetailPage({
 
       <div className="grid gap-4 sm:grid-cols-3">
         {summaryCards.map((card) => (
-          <div key={card.label} className="rounded-lg border bg-background p-4">
+          <div key={card.label} className="rounded-xl border border-border bg-card shadow-xs p-4">
             <p className="text-sm font-medium text-muted-foreground">
               {card.label}
             </p>
@@ -108,7 +108,7 @@ export default async function JobDetailPage({
       />
 
       {job.description && (
-        <div className="rounded-lg border bg-background p-4">
+        <div className="rounded-xl border border-border bg-card shadow-xs p-4">
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">
             Description
           </h2>

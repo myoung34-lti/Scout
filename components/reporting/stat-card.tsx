@@ -24,9 +24,9 @@ export function StatCard({
 
   const trend =
     delta > 0
-      ? { Icon: ArrowUp, className: 'text-emerald-600 dark:text-emerald-400' }
+      ? { Icon: ArrowUp, className: 'text-success' }
       : delta < 0
-        ? { Icon: ArrowDown, className: 'text-red-600 dark:text-red-400' }
+        ? { Icon: ArrowDown, className: 'text-danger' }
         : { Icon: Minus, className: 'text-muted-foreground' }
 
   return (
@@ -34,7 +34,7 @@ export function StatCard({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-lg border bg-background p-5 text-left transition-colors hover:border-primary/50"
+        className="w-full rounded-xl border border-border bg-card shadow-xs p-5 text-left transition-colors hover:border-primary/50"
       >
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums">{current}</p>

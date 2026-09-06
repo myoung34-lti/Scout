@@ -23,7 +23,7 @@ export function PromptList({ prompts }: { prompts: PromptWithVersion[] }) {
         <Link
           key={prompt.id}
           href={`/prompts/${prompt.id}`}
-          className="block rounded-lg border bg-background p-5 transition-colors hover:border-primary/50"
+          className="block rounded-xl border border-border bg-card shadow-xs p-5 transition-colors hover:border-primary/50"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">

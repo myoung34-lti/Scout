@@ -114,7 +114,7 @@ export function SavedReportsList({
 
   if (reports.length === 0) {
     return (
-      <div className="rounded-lg border bg-background p-8 text-center">
+      <div className="rounded-xl border border-border bg-card shadow-xs p-8 text-center">
         <p className="text-sm text-muted-foreground">
           No saved reports yet — build one in the Report Builder and save it to see it here.
         </p>
@@ -125,7 +125,7 @@ export function SavedReportsList({
   return (
     <div className="space-y-3">
       {reports.map((report) => (
-        <div key={report.id} className="rounded-lg border bg-background p-4">
+        <div key={report.id} className="rounded-xl border border-border bg-card shadow-xs p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h3 className="font-semibold">{report.name}</h3>

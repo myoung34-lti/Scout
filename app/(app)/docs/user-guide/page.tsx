@@ -49,7 +49,7 @@ export default function UserGuidePage() {
     <div className="space-y-6">
       <div>
         <BackButton className="mb-2" />
-        <h1 className="text-2xl font-semibold">User Guide</h1>
+        <h1 className="page-title">User Guide</h1>
         <p className="text-sm text-muted-foreground">
           How LTI&apos;s recruiting team uses Scout, day to day, candidate to candidate. Scout
           just went live, so expect rough edges — see Known Issues at the bottom for how to flag

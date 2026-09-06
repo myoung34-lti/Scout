@@ -27,7 +27,7 @@ export function ResumePanel({
   const isDocx = fileName.endsWith('.docx')
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-background">
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card shadow-xs">
       <div className="flex items-center justify-between gap-2 border-b p-3">
         <span className="truncate text-sm font-medium">{resume.fileName}</span>
         <Button variant="outline" size="sm" asChild>

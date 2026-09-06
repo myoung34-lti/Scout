@@ -99,7 +99,7 @@ export function ReportResults({
                   key={s.name}
                   type="monotone"
                   dataKey={s.name}
-                  stroke="#2563eb"
+                  stroke="var(--chart-1)"
                   strokeWidth={2}
                   dot={{ r: 3, cursor: 'pointer' }}
                   activeDot={{ r: 5, cursor: 'pointer' }}
@@ -119,7 +119,7 @@ export function ReportResults({
               <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
               <Tooltip />
               {result.series.map((s) => (
-                <Bar key={s.name} dataKey={s.name} fill="#2563eb" radius={[4, 4, 0, 0]} />
+                <Bar key={s.name} dataKey={s.name} fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
               ))}
             </BarChart>
           )}

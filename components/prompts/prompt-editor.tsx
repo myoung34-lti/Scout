@@ -175,7 +175,7 @@ export function PromptEditor({
       </form>
 
       <div className="space-y-6">
-        <div className="space-y-3 rounded-lg border bg-background p-4">
+        <div className="space-y-3 rounded-xl border border-border bg-card shadow-xs p-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="prompt-active">Status</Label>
             <div className="flex items-center gap-2">

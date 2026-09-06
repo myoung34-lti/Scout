@@ -139,7 +139,7 @@ export default async function CandidateProfilePage({
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold">
+                <h1 className="page-title">
                   {candidate.firstName} {candidate.lastName}
                 </h1>
                 <CandidateRating
@@ -325,7 +325,7 @@ export default async function CandidateProfilePage({
             )}
           />
 
-          <div className="rounded-lg border bg-background p-4">
+          <div className="rounded-xl border border-border bg-card shadow-xs p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Users className="size-4" />
               Talent Pool
@@ -346,7 +346,7 @@ export default async function CandidateProfilePage({
             }
           />
 
-          <div className="rounded-lg border bg-background p-4">
+          <div className="rounded-xl border border-border bg-card shadow-xs p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <FileText className="size-4" />
               Resumes
@@ -376,7 +376,7 @@ export default async function CandidateProfilePage({
             <ResumeUploader candidateId={candidate.id} />
           </div>
 
-          <div className="rounded-lg border bg-background p-4">
+          <div className="rounded-xl border border-border bg-card shadow-xs p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Tag className="size-4" />
               Tags

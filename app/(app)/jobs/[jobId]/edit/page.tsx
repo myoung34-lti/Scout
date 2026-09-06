@@ -19,7 +19,7 @@ export default async function EditJobPage({
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold">Edit Job</h1>
+      <h1 className="page-title">Edit Job</h1>
       <JobForm
         action={boundUpdateJob}
         defaultValues={job}

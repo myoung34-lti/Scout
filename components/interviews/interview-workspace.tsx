@@ -200,7 +200,7 @@ export const InterviewWorkspace = forwardRef<InterviewWorkspaceHandle, {
           : ''
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-background p-5">
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card shadow-xs p-5">
       {saveLabel && (
         <div className="mb-4 flex justify-end">
           <span

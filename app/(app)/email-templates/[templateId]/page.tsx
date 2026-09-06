@@ -27,7 +27,7 @@ export default async function EmailTemplateEditorPage({
       <BackButton />
 
       <div>
-        <h1 className="text-2xl font-semibold">{template.name}</h1>
+        <h1 className="page-title">{template.name}</h1>
         <p className="text-sm text-muted-foreground">
           Editing a template saves a new version — previous versions are never overwritten.
         </p>

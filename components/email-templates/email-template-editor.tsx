@@ -150,7 +150,7 @@ export function EmailTemplateEditor({
       </form>
 
       <div className="space-y-6">
-        <div className="space-y-3 rounded-lg border bg-background p-4">
+        <div className="space-y-3 rounded-xl border border-border bg-card shadow-xs p-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="template-active">Status</Label>
             <div className="flex items-center gap-2">
