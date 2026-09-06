@@ -79,6 +79,29 @@ export const INTERVIEW_STAGES: PipelineStage[] = [
 
 export const ALL_STAGES: PipelineStage[] = [...ACTIVE_STAGES, ...TERMINAL_STAGES]
 
+// One place that decides what colour a stage reads as, so a stage badge looks
+// the same on the candidate list, the board and the profile. Pre-interview
+// stages stay neutral deliberately — colour is reserved for stages that carry
+// an actual signal.
+export type StageTone = 'neutral' | 'info' | 'warning' | 'success' | 'danger'
+
+const STAGE_TONES: Record<PipelineStage, StageTone> = {
+  APPLIED: 'neutral',
+  SCREENING: 'neutral',
+  INTRODUCTORY_CALL: 'info',
+  BEHAVIORAL_INTERVIEW: 'info',
+  TECHNICAL_INTERVIEW: 'info',
+  EXECUTIVE_INTERVIEW: 'info',
+  CLIENT_INTERVIEW: 'info',
+  OFFER: 'warning',
+  HIRED: 'success',
+  REJECTED: 'danger',
+}
+
+export function stageTone(stage: PipelineStage): StageTone {
+  return STAGE_TONES[stage]
+}
+
 // Advancing into one of these stages (or rejecting, checked separately)
 // prompts a "send an email?" toast — the earlier Applied/Screening bump and
 // Offer/Hired are deliberately excluded, since those aren't typically
