@@ -7,6 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-subtle: var(--foreground-subtle);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
@@ -17,6 +18,7 @@
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -26,6 +28,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -34,11 +37,28 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
   --color-card: var(--card);
+
+  /* Status — each has a solid tone for text/icons and a soft pair for pills. */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -46,75 +66,149 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
 }
 
 :root {
-  --background: oklch(0.99 0.002 240);
-  --foreground: oklch(0.17 0.012 240);
+  /* Brand ramp. Every maroon in the app resolves to one of these five —
+     nothing should introduce a sixth. */
+  --maroon-deep: oklch(0.26 0.095 19);
+  --maroon-dark: oklch(0.33 0.125 19);
+  --maroon: oklch(0.41 0.148 20);
+  --maroon-bright: oklch(0.52 0.16 21);
+  --maroon-tint: oklch(0.945 0.028 19);
+
+  --background: oklch(0.985 0.002 300);
+  --foreground: oklch(0.18 0.012 300);
+  --foreground-subtle: oklch(0.58 0.012 300);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.17 0.012 240);
+  --card-foreground: oklch(0.18 0.012 300);
+  --elevated: oklch(1 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.17 0.012 240);
-  --primary: oklch(0.33 0.15 17);
+  --popover-foreground: oklch(0.18 0.012 300);
+  --primary: var(--maroon);
+  --primary-hover: var(--maroon-dark);
   --primary-foreground: oklch(0.99 0.004 17);
-  --secondary: oklch(0.955 0.005 240);
-  --secondary-foreground: oklch(0.2 0.012 240);
-  --muted: oklch(0.96 0.004 240);
-  --muted-foreground: oklch(0.5 0.014 240);
-  --accent: oklch(0.93 0.035 17);
-  --accent-foreground: oklch(0.28 0.1 17);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.005 240);
-  --input: oklch(0.9 0.005 240);
-  --ring: oklch(0.33 0.15 17);
-  --chart-1: oklch(0.45 0.16 17);
-  --chart-2: oklch(0.6 0.14 250);
-  --chart-3: oklch(0.65 0.16 150);
-  --chart-4: oklch(0.7 0.17 80);
-  --chart-5: oklch(0.6 0.2 25);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.2 0.03 17);
-  --sidebar-foreground: oklch(0.97 0.004 17);
-  --sidebar-primary: oklch(0.6 0.16 17);
+  --secondary: oklch(0.965 0.004 300);
+  --secondary-foreground: oklch(0.24 0.012 300);
+  --muted: oklch(0.968 0.003 300);
+  --muted-foreground: oklch(0.48 0.013 300);
+  --accent: var(--maroon-tint);
+  --accent-foreground: var(--maroon-dark);
+  --destructive: oklch(0.53 0.2 27);
+  --border: oklch(0.918 0.004 300);
+  --border-strong: oklch(0.855 0.006 300);
+  --input: oklch(0.9 0.005 300);
+  --ring: var(--maroon-bright);
+
+  --success: oklch(0.5 0.115 157);
+  --success-soft: oklch(0.945 0.04 157);
+  --success-border: oklch(0.86 0.065 157);
+  --warning: oklch(0.53 0.11 72);
+  --warning-soft: oklch(0.955 0.045 78);
+  --warning-border: oklch(0.87 0.075 78);
+  --info: oklch(0.51 0.115 248);
+  --info-soft: oklch(0.95 0.03 248);
+  --info-border: oklch(0.87 0.055 248);
+  --danger: oklch(0.52 0.185 25);
+  --danger-soft: oklch(0.955 0.028 25);
+  --danger-border: oklch(0.88 0.055 25);
+
+  /* Chart series — tokenised so Reporting follows the theme instead of
+     the hardcoded hex it used before. Series 1 is the brand. */
+  --chart-1: oklch(0.47 0.155 20);
+  --chart-2: oklch(0.55 0.13 248);
+  --chart-3: oklch(0.58 0.115 157);
+  --chart-4: oklch(0.65 0.13 72);
+  --chart-5: oklch(0.5 0.11 300);
+
+  --radius: 0.625rem;
+
+  --elevation-xs: 0 1px 2px 0 oklch(0.18 0.012 300 / 0.05);
+  --elevation-sm: 0 1px 2px 0 oklch(0.18 0.012 300 / 0.06), 0 1px 3px 0 oklch(0.18 0.012 300 / 0.04);
+  --elevation-md: 0 2px 4px -1px oklch(0.18 0.012 300 / 0.06), 0 4px 12px -2px oklch(0.18 0.012 300 / 0.07);
+  --elevation-lg: 0 8px 24px -4px oklch(0.18 0.012 300 / 0.12), 0 2px 6px -2px oklch(0.18 0.012 300 / 0.07);
+
+  --sidebar: var(--maroon-deep);
+  --sidebar-foreground: oklch(0.96 0.01 19);
+  --sidebar-muted: oklch(0.72 0.045 19);
+  --sidebar-primary: oklch(0.68 0.15 21);
   --sidebar-primary-foreground: oklch(0.99 0.004 17);
-  --sidebar-accent: oklch(0.28 0.05 17);
-  --sidebar-accent-foreground: oklch(0.97 0.02 17);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.6 0.16 17);
+  --sidebar-accent: oklch(0.35 0.115 19);
+  --sidebar-accent-foreground: oklch(0.99 0.008 19);
+  --sidebar-border: oklch(1 0 0 / 11%);
+  --sidebar-ring: oklch(0.68 0.15 21);
 }
 
 .dark {
-  --background: oklch(0.145 0.014 255);
-  --foreground: oklch(0.96 0.005 240);
-  --card: oklch(0.195 0.015 255);
-  --card-foreground: oklch(0.96 0.005 240);
-  --popover: oklch(0.195 0.015 255);
-  --popover-foreground: oklch(0.96 0.005 240);
-  --primary: oklch(0.58 0.17 17);
+  /* Dark is not an inversion: the ground goes near-black neutral, surfaces
+     step up rather than down, and the maroon gets brighter to stay legible. */
+  --maroon-deep: oklch(0.19 0.06 19);
+  --maroon-dark: oklch(0.3 0.11 19);
+  --maroon: oklch(0.58 0.165 21);
+  --maroon-bright: oklch(0.68 0.155 22);
+  --maroon-tint: oklch(0.3 0.075 19);
+
+  --background: oklch(0.155 0.005 300);
+  --foreground: oklch(0.955 0.004 300);
+  --foreground-subtle: oklch(0.62 0.01 300);
+  --card: oklch(0.196 0.006 300);
+  --card-foreground: oklch(0.955 0.004 300);
+  --elevated: oklch(0.235 0.007 300);
+  --popover: oklch(0.235 0.007 300);
+  --popover-foreground: oklch(0.955 0.004 300);
+  --primary: var(--maroon);
+  --primary-hover: var(--maroon-bright);
   --primary-foreground: oklch(0.99 0.004 17);
-  --secondary: oklch(0.245 0.014 255);
-  --secondary-foreground: oklch(0.95 0.005 240);
-  --muted: oklch(0.22 0.013 255);
-  --muted-foreground: oklch(0.66 0.012 240);
-  --accent: oklch(0.3 0.06 17);
-  --accent-foreground: oklch(0.94 0.02 17);
-  --destructive: oklch(0.7 0.19 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.58 0.17 17);
-  --chart-1: oklch(0.58 0.17 17);
-  --chart-2: oklch(0.68 0.14 250);
-  --chart-3: oklch(0.7 0.16 150);
-  --chart-4: oklch(0.75 0.17 80);
-  --chart-5: oklch(0.68 0.2 25);
-  --sidebar: oklch(0.16 0.025 17);
-  --sidebar-foreground: oklch(0.96 0.005 240);
-  --sidebar-primary: oklch(0.58 0.17 17);
+  --secondary: oklch(0.25 0.006 300);
+  --secondary-foreground: oklch(0.95 0.004 300);
+  --muted: oklch(0.235 0.006 300);
+  --muted-foreground: oklch(0.68 0.011 300);
+  --accent: var(--maroon-tint);
+  --accent-foreground: oklch(0.94 0.03 19);
+  --destructive: oklch(0.68 0.185 25);
+  --border: oklch(1 0 0 / 11%);
+  --border-strong: oklch(1 0 0 / 19%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: var(--maroon-bright);
+
+  --success: oklch(0.75 0.13 157);
+  --success-soft: oklch(0.28 0.055 157);
+  --success-border: oklch(0.4 0.075 157);
+  --warning: oklch(0.79 0.12 78);
+  --warning-soft: oklch(0.3 0.055 78);
+  --warning-border: oklch(0.42 0.07 78);
+  --info: oklch(0.74 0.12 248);
+  --info-soft: oklch(0.28 0.055 248);
+  --info-border: oklch(0.4 0.075 248);
+  --danger: oklch(0.72 0.16 25);
+  --danger-soft: oklch(0.3 0.07 25);
+  --danger-border: oklch(0.42 0.1 25);
+
+  --chart-1: oklch(0.62 0.17 21);
+  --chart-2: oklch(0.68 0.13 248);
+  --chart-3: oklch(0.72 0.125 157);
+  --chart-4: oklch(0.78 0.13 78);
+  --chart-5: oklch(0.66 0.12 300);
+
+  --elevation-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+  --elevation-sm: 0 1px 2px 0 oklch(0 0 0 / 0.36), 0 1px 3px 0 oklch(0 0 0 / 0.26);
+  --elevation-md: 0 2px 4px -1px oklch(0 0 0 / 0.36), 0 4px 12px -2px oklch(0 0 0 / 0.34);
+  --elevation-lg: 0 8px 24px -4px oklch(0 0 0 / 0.5), 0 2px 6px -2px oklch(0 0 0 / 0.36);
+
+  --sidebar: var(--maroon-deep);
+  --sidebar-foreground: oklch(0.95 0.01 19);
+  --sidebar-muted: oklch(0.66 0.04 19);
+  --sidebar-primary: oklch(0.68 0.155 22);
   --sidebar-primary-foreground: oklch(0.99 0.004 17);
-  --sidebar-accent: oklch(0.28 0.05 17);
-  --sidebar-accent-foreground: oklch(0.94 0.02 17);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.58 0.17 17);
+  --sidebar-accent: oklch(0.3 0.095 19);
+  --sidebar-accent-foreground: oklch(0.98 0.008 19);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.68 0.155 22);
 }
 
 @layer base {
@@ -126,5 +220,28 @@
   }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  /* Headings carry the hierarchy — tighter tracking and heavier weight at
+     larger sizes, rather than relying on size alone. */
+  h1, h2, h3, h4 {
+    @apply font-heading;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+  }
+  /* Digits in tables and metrics should align in columns. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility page-title {
+  @apply font-heading text-2xl font-bold text-foreground;
+  letter-spacing: -0.022em;
+}
+
+@utility section-label {
+  @apply font-heading text-[11px] font-semibold uppercase text-muted-foreground;
+  letter-spacing: 0.09em;
 }
