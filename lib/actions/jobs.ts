@@ -8,13 +8,45 @@ import { jobSchema } from '@/lib/validation/job'
 import { CANONICAL_JOB_LOCATIONS } from '@/lib/job-locations'
 import type { JobStatus } from '@prisma/client'
 
-export async function listJobs(statusFilter?: JobStatus) {
+export async function listJobs(
+  statusFilter?: JobStatus,
+  options?: { query?: string; location?: string }
+) {
   await requireSession()
+  const query = options?.query?.trim()
+  const location = options?.location?.trim()
+
   return prisma.job.findMany({
-    where: statusFilter ? { status: statusFilter } : undefined,
+    where: {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(location ? { location } : {}),
+      ...(query
+        ? {
+            OR: [
+              { internalName: { contains: query, mode: 'insensitive' as const } },
+              { externalName: { contains: query, mode: 'insensitive' as const } },
+              { clientName: { contains: query, mode: 'insensitive' as const } },
+              { teamName: { contains: query, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { applications: true } } },
   })
+}
+
+// A filtered count can't be aliased alongside the unfiltered one inside a
+// single `_count`, so hires come from one grouped query rather than N+1
+// per-job counts.
+export async function countHiresByJob(): Promise<Record<string, number>> {
+  await requireSession()
+  const grouped = await prisma.application.groupBy({
+    by: ['jobId'],
+    where: { stage: 'HIRED' },
+    _count: { _all: true },
+  })
+  return Object.fromEntries(grouped.map((g) => [g.jobId, g._count._all]))
 }
 
 export async function countJobsByStatus() {
