@@ -22,6 +22,8 @@ import {
 import { AddToJobDialog } from '@/components/candidates/add-to-job-dialog'
 import { RemoveFromTalentPoolButton } from '@/components/candidates/remove-from-talent-pool-button'
 
+export const metadata = { title: 'Talent Pool' }
+
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
 export default async function TalentPoolPage({

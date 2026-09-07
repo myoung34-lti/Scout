@@ -5,6 +5,8 @@ import { EmailTemplateList } from '@/components/email-templates/email-template-l
 import { EmailTemplateSearchFilters } from '@/components/email-templates/email-template-search-filters'
 import { Button } from '@/components/ui/button'
 
+export const metadata = { title: 'Email Templates' }
+
 export default async function EmailTemplatesPage({
   searchParams,
 }: {

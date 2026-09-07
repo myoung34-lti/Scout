@@ -1,9 +1,7 @@
-import Link from 'next/link'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { listDeletedCandidates } from '@/lib/actions/candidates'
 import { RETENTION_DAYS } from '@/lib/candidate-visibility'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Table,
@@ -14,6 +12,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { RestoreCandidateButton } from '@/components/candidates/restore-candidate-button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
+
+export const metadata = { title: 'Deleted Candidates' }
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
@@ -23,12 +24,9 @@ export default async function DeletedCandidatesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <Button variant="ghost" size="sm" asChild className="-ml-2 mb-1">
-          <Link href="/candidates">
-            <ArrowLeft />
-            Candidates
-          </Link>
-        </Button>
+        <Breadcrumb
+          items={[{ label: 'Candidates', href: '/candidates' }, { label: 'Deleted' }]}
+        />
         <h1 className="page-title">Deleted Candidates</h1>
         <p className="text-sm text-muted-foreground">
           Restorable for {RETENTION_DAYS} days. Their applications, interviews, notes and

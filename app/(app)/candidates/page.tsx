@@ -32,6 +32,8 @@ import {
   findRelevantApplication,
 } from '@/lib/candidate-type'
 
+export const metadata = { title: 'Candidates' }
+
 const ADDED_DATE_PRESETS: AddedDatePreset[] = ['week', 'month', 'custom']
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 

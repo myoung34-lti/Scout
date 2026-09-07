@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { notFound } from 'next/navigation'
-import { BackButton } from '@/components/layout/back-button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getJob } from '@/lib/actions/jobs'
 import { getBoardApplications } from '@/lib/actions/pipeline'
 import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
@@ -9,6 +9,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PipelineBoard } from '@/components/kanban/pipeline-board'
 import { ACTIVE_STAGES, FORMAL_INTERVIEW_STAGES } from '@/lib/pipeline'
+
+import { jobTitle, pageTitle } from '@/lib/page-metadata'
+
+export async function generateMetadata({ params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params
+  return { title: pageTitle(await jobTitle(jobId), 'Jobs') }
+}
 
 const STATUS_LABEL: Record<string, string> = {
   OPEN: 'Open',
@@ -52,7 +59,9 @@ export default async function JobDetailPage({
 
   return (
     <div className="space-y-6">
-      <BackButton />
+      <Breadcrumb
+        items={[{ label: 'Jobs', href: '/jobs' }, { label: job.internalName }]}
+      />
 
       <div className="flex items-start justify-between">
         <div>

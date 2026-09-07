@@ -1,7 +1,14 @@
 import { notFound } from 'next/navigation'
-import { BackButton } from '@/components/layout/back-button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getPrompt } from '@/lib/actions/prompts'
 import { PromptEditor } from '@/components/prompts/prompt-editor'
+
+import { promptTitle, pageTitle } from '@/lib/page-metadata'
+
+export async function generateMetadata({ params }: { params: Promise<{ promptId: string }> }) {
+  const { promptId } = await params
+  return { title: pageTitle(await promptTitle(promptId), 'Prompt Library') }
+}
 
 export default async function PromptEditorPage({
   params,
@@ -15,7 +22,9 @@ export default async function PromptEditorPage({
 
   return (
     <div className="space-y-6">
-      <BackButton />
+      <Breadcrumb
+        items={[{ label: 'Prompt Library', href: '/prompts' }, { label: prompt.name }]}
+      />
 
       <div>
         <h1 className="page-title">{prompt.name}</h1>

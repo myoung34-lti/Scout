@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText } from 'lucide-react'
-import { BackButton } from '@/components/layout/back-button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getCandidate } from '@/lib/actions/candidates'
 import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText, stageTone } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +33,13 @@ import type {
   InterviewType,
   InterviewStatus,
 } from '@prisma/client'
+
+import { candidateTitle, pageTitle } from '@/lib/page-metadata'
+
+export async function generateMetadata({ params }: { params: Promise<{ candidateId: string }> }) {
+  const { candidateId } = await params
+  return { title: pageTitle(await candidateTitle(candidateId), 'Candidates') }
+}
 
 // The most recent completed interview of each type wins its stage's badge —
 // `interviews` is expected pre-sorted newest-first (as getCandidate returns
@@ -129,7 +136,12 @@ export default async function CandidateProfilePage({
       emailTemplates={composeGlobals.emailTemplates}
     >
     <div className="space-y-6">
-      <BackButton />
+      <Breadcrumb
+        items={[
+          { label: 'Candidates', href: '/candidates' },
+          { label: `${candidate.firstName} ${candidate.lastName}` },
+        ]}
+      />
 
       <div>
         <div className="flex items-start justify-between gap-4">

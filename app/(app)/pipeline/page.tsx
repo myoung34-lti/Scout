@@ -2,6 +2,8 @@ import { getAllBoardApplications } from '@/lib/actions/pipeline'
 import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
 import { MasterPipelineView } from '@/components/kanban/master-pipeline-view'
 
+export const metadata = { title: 'Pipeline' }
+
 export default async function PipelinePage() {
   const [applications, composeGlobals] = await Promise.all([
     getAllBoardApplications(),

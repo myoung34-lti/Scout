@@ -9,9 +9,11 @@ import {
   Bookmark,
   Bug,
 } from 'lucide-react'
-import { BackButton } from '@/components/layout/back-button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { LucideIcon } from 'lucide-react'
+
+export const metadata = { title: 'User Guide' }
 
 function GuideSection({
   icon: Icon,
@@ -48,7 +50,10 @@ export default function UserGuidePage() {
   return (
     <div className="space-y-6">
       <div>
-        <BackButton className="mb-2" />
+        <Breadcrumb
+          className="mb-2"
+          items={[{ label: 'User Docs', href: '/docs' }, { label: 'User Guide' }]}
+        />
         <h1 className="page-title">User Guide</h1>
         <p className="text-sm text-muted-foreground">
           How LTI&apos;s recruiting team uses Scout, day to day, candidate to candidate. Scout

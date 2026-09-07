@@ -19,6 +19,8 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { EmptyState } from '@/components/ui/empty-state'
 import { StatCard } from '@/components/reporting/stat-card'
 
+export const metadata = { title: 'Home' }
+
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
 

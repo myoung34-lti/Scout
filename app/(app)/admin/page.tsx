@@ -13,6 +13,8 @@ import { UserNameInput } from '@/components/admin/user-name-input'
 import { EmailVariableRow } from '@/components/admin/email-variable-row'
 import { AddEmailVariableDialog } from '@/components/admin/add-email-variable-dialog'
 
+export const metadata = { title: 'Admin' }
+
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
 export default async function AdminPage() {

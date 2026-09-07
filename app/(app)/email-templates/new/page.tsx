@@ -1,6 +1,8 @@
-import { BackButton } from '@/components/layout/back-button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { EmailTemplateCreateForm } from '@/components/email-templates/email-template-create-form'
 import { EMAIL_TEMPLATE_DYNAMIC_VARIABLES, listEmailVariables } from '@/lib/email-variables'
+
+export const metadata = { title: 'New Email Template' }
 
 export default async function NewEmailTemplatePage() {
   const staticVariables = await listEmailVariables()
@@ -11,7 +13,12 @@ export default async function NewEmailTemplatePage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <BackButton />
+      <Breadcrumb
+        items={[
+          { label: 'Email Templates', href: '/email-templates' },
+          { label: 'New Email Template' },
+        ]}
+      />
 
       <div>
         <h1 className="page-title">New Email Template</h1>

@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { JobStatus } from '@prisma/client'
 
+export const metadata = { title: 'Jobs' }
+
 export default async function JobsPage({
   searchParams,
 }: {

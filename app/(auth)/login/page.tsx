@@ -2,6 +2,8 @@ import { LoginForm } from '@/components/auth/login-form'
 import { ScoutMark } from '@/components/icons/scout-mark'
 import { LtiMark } from '@/components/icons/lti-mark'
 
+export const metadata = { title: 'Sign in' }
+
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">

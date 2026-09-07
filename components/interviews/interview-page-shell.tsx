@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { CandidateRating } from '@/components/candidates/candidate-rating'
 import { ResumePanel } from '@/components/interviews/resume-panel'
 import {
@@ -49,24 +49,50 @@ export function InterviewPageShell({
   const router = useRouter()
   const workspaceRef = useRef<InterviewWorkspaceHandle>(null)
 
-  function handleBack() {
+  // Same unsaved-changes guard as before, but it now leaves for a known
+  // destination. router.back() could drop you outside Scout entirely if the
+  // interview was opened from a link or a fresh tab.
+  function leaveTo(href: string) {
     if (workspaceRef.current?.hasUnsavedChanges()) {
       const proceed = window.confirm('You have unsaved changes. Leave without saving?')
       if (!proceed) return
     }
-    router.back()
+    router.push(href)
   }
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back
-      </button>
+      {/* Hand-rolled rather than the shared Breadcrumb because every link
+          here has to pass through the unsaved-changes guard. */}
+      <nav aria-label="Breadcrumb">
+        <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+          <li className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => leaveTo('/candidates')}
+              className="transition-colors hover:text-foreground"
+            >
+              Candidates
+            </button>
+            <ChevronRight className="size-3.5 shrink-0 opacity-50" aria-hidden />
+          </li>
+          <li className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => leaveTo(`/candidates/${candidateId}`)}
+              className="transition-colors hover:text-foreground"
+            >
+              {candidateName}
+            </button>
+            <ChevronRight className="size-3.5 shrink-0 opacity-50" aria-hidden />
+          </li>
+          <li>
+            <span className="font-medium text-foreground" aria-current="page">
+              {subtitle}
+            </span>
+          </li>
+        </ol>
+      </nav>
 
       <div>
         <div className="flex items-center gap-3">

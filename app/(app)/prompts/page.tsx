@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import type { PromptCategory } from '@prisma/client'
 import { ALL_PROMPT_CATEGORIES } from '@/lib/prompt-category'
 
+export const metadata = { title: 'Prompt Library' }
+
 export default async function PromptsPage({
   searchParams,
 }: {

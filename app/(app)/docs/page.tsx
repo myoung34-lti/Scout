@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { BookOpen, Bug, Lightbulb, ArrowUpRight, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
+export const metadata = { title: 'User Docs' }
+
 const DOCS = [
   {
     href: '/docs/user-guide',

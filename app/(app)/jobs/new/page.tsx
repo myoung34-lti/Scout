@@ -2,6 +2,8 @@ import { createJob, listDistinctLocations } from '@/lib/actions/jobs'
 import { listUsers } from '@/lib/actions/users'
 import { JobForm } from '@/components/jobs/job-form'
 
+export const metadata = { title: 'Add Job' }
+
 export default async function NewJobPage() {
   const [locations, users] = await Promise.all([listDistinctLocations(), listUsers()])
 

@@ -3,6 +3,8 @@ import { requireSession } from '@/lib/session'
 import { listUsers } from '@/lib/actions/users'
 import { CandidateForm } from '@/components/candidates/candidate-form'
 
+export const metadata = { title: 'Add Candidate' }
+
 export default async function NewCandidatePage({
   searchParams,
 }: {

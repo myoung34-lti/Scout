@@ -4,6 +4,17 @@ import { INTERVIEW_TYPE_LABELS } from '@/lib/interview'
 import { getActivePromptForInterviewType } from '@/lib/prompts'
 import { InterviewPageShell } from '@/components/interviews/interview-page-shell'
 
+import { interviewTitle, pageTitle } from '@/lib/page-metadata'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ interviewId: string }>
+}) {
+  const { interviewId } = await params
+  return { title: pageTitle(await interviewTitle(interviewId), 'Interview') }
+}
+
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
   timeStyle: 'short',

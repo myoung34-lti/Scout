@@ -12,6 +12,8 @@ import { StatCard } from '@/components/reporting/stat-card'
 import { TrendChart } from '@/components/reporting/trend-chart'
 import { ReportingView } from '@/components/reporting/reporting-view'
 
+export const metadata = { title: 'Reporting' }
+
 const VALID_TREND_DAYS = ['30', '90', '180']
 
 export default async function ReportingPage({
