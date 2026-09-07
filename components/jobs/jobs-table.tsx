@@ -26,8 +26,10 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
 type JobWithCount = Job & {
   _count: { applications: number }
-  recruiter: { id: string; name: string } | null
-  sourcer: { id: string; name: string } | null
+  assignments: {
+    role: 'RECRUITER' | 'SOURCER'
+    user: { id: string; name: string }
+  }[]
 }
 
 function arrangement(job: Job) {
@@ -85,11 +87,28 @@ export function JobsTable({
               </TableCell>
               <TableCell className="text-right">{job._count.applications}</TableCell>
               <TableCell className="text-right">{hiresByJob[job.id] ?? 0}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {job.recruiter?.name ?? <span className="text-muted-foreground/60">Unassigned</span>}
-                {job.sourcer && (
-                  <span className="block text-xs">Sourcer: {job.sourcer.name}</span>
-                )}
+              <TableCell className="max-w-[14rem] whitespace-normal text-muted-foreground">
+                {(() => {
+                  const recruiters = job.assignments
+                    .filter((a) => a.role === 'RECRUITER')
+                    .map((a) => a.user.name)
+                  const sourcers = job.assignments
+                    .filter((a) => a.role === 'SOURCER')
+                    .map((a) => a.user.name)
+                  if (recruiters.length === 0 && sourcers.length === 0) {
+                    return <span className="text-muted-foreground/60">Unassigned</span>
+                  }
+                  return (
+                    <>
+                      {recruiters.length > 0 && <span>{recruiters.join(', ')}</span>}
+                      {sourcers.length > 0 && (
+                        <span className="block text-xs">
+                          Sourcing: {sourcers.join(', ')}
+                        </span>
+                      )}
+                    </>
+                  )
+                })()}
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {dateFormatter.format(job.createdAt)}

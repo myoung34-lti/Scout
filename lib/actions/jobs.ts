@@ -34,8 +34,7 @@ export async function listJobs(
     orderBy: { createdAt: 'desc' },
     include: {
       _count: { select: { applications: true } },
-      recruiter: { select: { id: true, name: true } },
-      sourcer: { select: { id: true, name: true } },
+      assignments: { include: { user: { select: { id: true, name: true } } } },
     },
   })
 }
@@ -66,7 +65,10 @@ export async function countJobsByStatus() {
 
 export async function getJob(jobId: string) {
   await requireSession()
-  return prisma.job.findUnique({ where: { id: jobId } })
+  return prisma.job.findUnique({
+    where: { id: jobId },
+    include: { assignments: { select: { userId: true, role: true } } },
+  })
 }
 
 export async function listDistinctLocations() {
@@ -78,6 +80,13 @@ export async function listDistinctLocations() {
   })
   const existing = jobs.map((j) => j.location).filter((loc) => loc.length > 0)
   return [...new Set([...CANONICAL_JOB_LOCATIONS, ...existing])]
+}
+
+function assignmentRows(recruiterIds: string[], sourcerIds: string[]) {
+  return [
+    ...recruiterIds.map((userId) => ({ userId, role: 'RECRUITER' as const })),
+    ...sourcerIds.map((userId) => ({ userId, role: 'SOURCER' as const })),
+  ]
 }
 
 function readJobFormData(formData: FormData) {
@@ -92,8 +101,8 @@ function readJobFormData(formData: FormData) {
     isHybrid: formData.get('isHybrid'),
     description: formData.get('description'),
     status: formData.get('status'),
-    recruiterId: formData.get('recruiterId'),
-    sourcerId: formData.get('sourcerId'),
+    recruiterIds: formData.getAll('recruiterIds'),
+    sourcerIds: formData.getAll('sourcerIds'),
   }
 }
 
@@ -106,7 +115,10 @@ export async function createJob(_prevState: unknown, formData: FormData) {
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
-  const job = await prisma.job.create({ data: parsed.data })
+  const { recruiterIds, sourcerIds, ...fields } = parsed.data
+  const job = await prisma.job.create({
+    data: { ...fields, assignments: { create: assignmentRows(recruiterIds, sourcerIds) } },
+  })
 
   revalidatePath('/jobs')
   redirect(`/jobs/${job.id}`)
@@ -125,7 +137,17 @@ export async function updateJob(
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
-  await prisma.job.update({ where: { id: jobId }, data: parsed.data })
+  const { recruiterIds, sourcerIds, ...fields } = parsed.data
+  // Replace rather than diff: the form always submits the full intended set,
+  // and both statements run in one transaction so a job is never left with
+  // no assignments because the second failed.
+  await prisma.$transaction([
+    prisma.jobAssignment.deleteMany({ where: { jobId } }),
+    prisma.job.update({
+      where: { id: jobId },
+      data: { ...fields, assignments: { create: assignmentRows(recruiterIds, sourcerIds) } },
+    }),
+  ])
 
   revalidatePath('/jobs')
   revalidatePath(`/jobs/${jobId}`)

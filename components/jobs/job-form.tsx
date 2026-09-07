@@ -15,6 +15,44 @@ import {
 } from '@/components/ui/select'
 import type { Job } from '@prisma/client'
 
+// Native checkboxes sharing one name — FormData.getAll picks up every
+// checked value, so a job can carry several of each without extra state.
+function AssigneeGroup({
+  name,
+  label,
+  users,
+  selected,
+}: {
+  name: string
+  label: string
+  users: { id: string; name: string }[]
+  selected: string[]
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="mb-2 text-sm font-medium">{label}</legend>
+      {users.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No users to assign.</p>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-border p-3">
+          {users.map((u) => (
+            <label key={u.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name={name}
+                value={u.id}
+                defaultChecked={selected.includes(u.id)}
+                className="size-4 accent-primary"
+              />
+              {u.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </fieldset>
+  )
+}
+
 type JobFormState = {
   errors?: Record<string, string[] | undefined>
 }
@@ -29,12 +67,14 @@ export function JobForm({
   defaultValues,
   locations = [],
   users = [],
+  assignments = [],
   submitLabel = 'Save job',
 }: {
   action: JobFormAction
   defaultValues?: Partial<Job>
   locations?: string[]
   users?: { id: string; name: string }[]
+  assignments?: { userId: string; role: 'RECRUITER' | 'SOURCER' }[]
   submitLabel?: string
 }) {
   const [state, formAction, pending] = useActionState(action, undefined)
@@ -160,39 +200,19 @@ export function JobForm({
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="recruiterId">Recruiter</Label>
-          <Select name="recruiterId" defaultValue={defaultValues?.recruiterId ?? 'NONE'}>
-            <SelectTrigger id="recruiterId" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NONE">Unassigned</SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <AssigneeGroup
+          name="recruiterIds"
+          label="Recruiters"
+          users={users}
+          selected={assignments.filter((a) => a.role === 'RECRUITER').map((a) => a.userId)}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="sourcerId">Sourcer</Label>
-          <Select name="sourcerId" defaultValue={defaultValues?.sourcerId ?? 'NONE'}>
-            <SelectTrigger id="sourcerId" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NONE">Unassigned</SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <AssigneeGroup
+          name="sourcerIds"
+          label="Sourcers"
+          users={users}
+          selected={assignments.filter((a) => a.role === 'SOURCER').map((a) => a.userId)}
+        />
       </div>
 
       <div className="space-y-2">

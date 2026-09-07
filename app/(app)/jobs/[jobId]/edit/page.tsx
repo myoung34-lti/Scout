@@ -27,6 +27,7 @@ export default async function EditJobPage({
         defaultValues={job}
         locations={locations}
         users={users}
+        assignments={job.assignments}
         submitLabel="Save changes"
       />
     </div>

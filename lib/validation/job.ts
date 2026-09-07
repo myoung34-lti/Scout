@@ -10,13 +10,12 @@ const checkbox = z
   .union([z.literal('on'), z.undefined(), z.null()])
   .transform((v) => v === 'on')
 
-const assigneeId = z
-  .string()
-  .trim()
-  .transform((v) => (v === '' || v === 'NONE' ? null : v))
-  .nullable()
+// The checkbox groups submit zero or more ids under one name.
+const assigneeIds = z
+  .array(z.string().trim().min(1))
+  .max(20)
   .optional()
-  .transform((v) => v ?? null)
+  .transform((v) => v ?? [])
 
 export const jobSchema = z.object({
   internalName: z.string().trim().min(1, 'Internal name is required'),
@@ -31,8 +30,8 @@ export const jobSchema = z.object({
   status: z.enum(['OPEN', 'CLOSED', 'ON_HOLD']),
   // '' comes from the "Unassigned" option; stored as null rather than an
   // empty string so the foreign key stays valid.
-  recruiterId: assigneeId,
-  sourcerId: assigneeId,
+  recruiterIds: assigneeIds,
+  sourcerIds: assigneeIds,
 })
 
 export type JobFormValues = z.infer<typeof jobSchema>

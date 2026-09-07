@@ -52,13 +52,20 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   const mine = { candidate: { ownerId: authUser.id } }
   // The funnel and the Jobs Assigned count follow job assignment; the quiet
   // list and hires follow candidate ownership. Two different questions.
-  const myJobs = { job: { recruiterId: authUser.id } }
+  const myJobs = {
+    job: { assignments: { some: { userId: authUser.id, role: 'RECRUITER' as const } } },
+  }
   const qStart = quarterStart()
 
   const [user, jobsAssigned, funnelApps, allOpenJobs, activeApps, hires, openInterviews] =
     await Promise.all([
     prisma.user.findUnique({ where: { id: authUser.id }, select: { name: true } }),
-    prisma.job.count({ where: { recruiterId: authUser.id, status: { in: ['OPEN', 'ON_HOLD'] } } }),
+    prisma.job.count({
+      where: {
+        status: { in: ['OPEN', 'ON_HOLD'] },
+        assignments: { some: { userId: authUser.id, role: 'RECRUITER' } },
+      },
+    }),
     prisma.application.findMany({
       where: { stage: { in: IN_PROCESS_STAGES }, ...myJobs },
       select: { stage: true, candidateId: true },
@@ -67,8 +74,10 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
       where: { status: { in: ['OPEN', 'ON_HOLD'] } },
       select: {
         id: true,
-        recruiterId: true,
-        recruiter: { select: { name: true } },
+        assignments: {
+          where: { role: 'RECRUITER' },
+          select: { userId: true, user: { select: { name: true } } },
+        },
         _count: { select: { applications: { where: { stage: { in: IN_PROCESS_STAGES } } } } },
       },
     }),
@@ -165,15 +174,20 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   // has no row to group by.
   const byRecruiter = new Map<string | null, { name: string; open: number; inProcess: number }>()
   for (const j of allOpenJobs) {
-    const key = j.recruiterId
-    const entry = byRecruiter.get(key) ?? {
-      name: j.recruiter?.name ?? 'Unassigned',
-      open: 0,
-      inProcess: 0,
+    // A job with several recruiters counts once for each of them — the panel
+    // answers "what is this person carrying", not "how do roles divide up".
+    const seats = j.assignments.length > 0 ? j.assignments : [null]
+    for (const seat of seats) {
+      const key = seat?.userId ?? null
+      const entry = byRecruiter.get(key) ?? {
+        name: seat?.user.name ?? 'Unassigned',
+        open: 0,
+        inProcess: 0,
+      }
+      entry.open += 1
+      entry.inProcess += j._count.applications
+      byRecruiter.set(key, entry)
     }
-    entry.open += 1
-    entry.inProcess += j._count.applications
-    byRecruiter.set(key, entry)
   }
 
   return {
