@@ -28,8 +28,8 @@ const ACTIVITY_LABEL: Record<'stage' | 'note' | 'email' | 'applied', string> = {
   applied: 'applied',
 }
 
-// Marks a panel whose real data needs a schema change we've deliberately
-// deferred — so it reads as "not built yet" rather than as real data.
+// Marks something the dashboard will show once a deferred schema change
+// lands — so a gap reads as planned rather than broken.
 function PlannedPanel({ needs, children }: { needs: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-dashed border-border-strong bg-muted/40 p-4">
@@ -167,10 +167,15 @@ export default async function HomePage() {
             </PlannedPanel>
 
             {snapshot.openInterviews.length === 0 ? (
-              <EmptyState icon={CalendarClock} title="No open interviews" className="py-6" />
+              <EmptyState
+                icon={CalendarClock}
+                title="No unsubmitted drafts"
+                description="Interviews you've started but not submitted will appear here."
+                className="py-6"
+              />
             ) : (
               <div>
-                <p className="section-label mb-2">Assigned to you, not yet completed</p>
+                <p className="section-label mb-2">Drafts · started, not submitted</p>
                 <ul className="space-y-1.5">
                   {snapshot.openInterviews.map((i) => (
                     <li key={i.id}>
@@ -181,9 +186,12 @@ export default async function HomePage() {
                         <span className="block truncate text-sm font-medium">
                           {i.candidateName}
                         </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {INTERVIEW_TYPE_LABELS[i.type as InterviewType]} · started{' '}
-                          {dateFormatter.format(i.createdAt)}
+                        <span className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="truncate">
+                            {INTERVIEW_TYPE_LABELS[i.type as InterviewType]} ·{' '}
+                            {dateFormatter.format(i.createdAt)}
+                          </span>
+                          <span className="shrink-0 tabular-nums">{i.daysOpen}d open</span>
                         </span>
                       </Link>
                     </li>
@@ -191,6 +199,9 @@ export default async function HomePage() {
                 </ul>
               </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Oldest draft first.
+            </p>
           </CardContent>
         </Card>
       </div>

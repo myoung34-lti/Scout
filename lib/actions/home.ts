@@ -43,6 +43,7 @@ export type HomeSnapshot = {
     candidateName: string
     type: string
     createdAt: Date
+    daysOpen: number
   }[]
 }
 
@@ -93,7 +94,7 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
         candidateId: true,
         candidate: { select: { firstName: true, lastName: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
       take: INTERVIEW_LIMIT,
     }),
   ])
@@ -177,6 +178,7 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
       candidateName: `${i.candidate.firstName} ${i.candidate.lastName}`,
       type: i.type,
       createdAt: i.createdAt,
+      daysOpen: Math.floor((Date.now() - i.createdAt.getTime()) / 86_400_000),
     })),
   }
 }
