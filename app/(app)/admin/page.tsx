@@ -22,14 +22,14 @@ export default async function AdminPage() {
     <div className="space-y-10">
       <div>
         <div>
-          <h1 className="text-2xl font-semibold">Admin</h1>
+          <h1 className="page-title">Admin</h1>
           <p className="text-sm text-muted-foreground">
             Manage your team&apos;s roles. New teammates are added directly in
             Supabase for now — once they sign in, they&apos;ll show up here.
           </p>
         </div>
 
-        <div className="mt-4 rounded-lg border bg-background">
+        <div className="mt-4 rounded-xl border border-border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>
@@ -69,7 +69,7 @@ export default async function AdminPage() {
           <AddEmailVariableDialog />
         </div>
 
-        <div className="mt-4 rounded-lg border bg-background">
+        <div className="mt-4 rounded-xl border border-border bg-card shadow-xs">
           <Table>
             <TableHeader>
               <TableRow>

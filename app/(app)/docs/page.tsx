@@ -30,7 +30,7 @@ export default function DocsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">User Docs</h1>
+        <h1 className="page-title">User Docs</h1>
         <p className="text-sm text-muted-foreground">
           Guides and feedback links for Scout.
         </p>

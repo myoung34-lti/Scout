@@ -372,7 +372,7 @@ export function ReportBuilder({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 rounded-lg border bg-background p-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 rounded-xl border border-border bg-card shadow-xs p-5 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-2 lg:col-span-3">
           <Label htmlFor="report-name">Report Name</Label>
           <Input
@@ -516,7 +516,7 @@ export function ReportBuilder({
         </div>
       </div>
 
-      <div className="rounded-lg border bg-background p-5">
+      <div className="rounded-xl border border-border bg-card shadow-xs p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium">{name.trim() || METRIC_LABELS[metric]}</h2>
           <div className="flex items-center gap-2">

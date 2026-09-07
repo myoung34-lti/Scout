@@ -14,7 +14,7 @@ export default async function NewEmailTemplatePage() {
       <BackButton />
 
       <div>
-        <h1 className="text-2xl font-semibold">New Email Template</h1>
+        <h1 className="page-title">New Email Template</h1>
         <p className="text-sm text-muted-foreground">
           Create a reusable, versioned candidate email template.
         </p>

@@ -107,6 +107,7 @@ model User {
   generatedInsights            CandidateInsight[]
   askScoutMessages             AskScoutMessage[]
   savedReports                 SavedReport[]
+  jobAssignments               JobAssignment[]
 }
 
 model Job {
@@ -127,6 +128,30 @@ model Job {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   applications    Application[]
+  // A role can be worked by several recruiters and several sourcers at once,
+  // so staffing is a join rather than one column per seat.
+  assignments     JobAssignment[]
+}
+
+enum JobAssignmentRole {
+  RECRUITER
+  SOURCER
+}
+
+model JobAssignment {
+  id        String            @id @default(cuid())
+  jobId     String
+  userId    String            @db.Uuid
+  role      JobAssignmentRole
+  createdAt DateTime          @default(now())
+  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id])
+
+  // Someone can be both recruiter and sourcer on a job, but only once in
+  // each capacity.
+  @@unique([jobId, userId, role])
+  @@index([userId, role])
+  @@index([jobId])
 }
 
 model Candidate {

@@ -18,7 +18,7 @@ export default async function PromptEditorPage({
       <BackButton />
 
       <div>
-        <h1 className="text-2xl font-semibold">{prompt.name}</h1>
+        <h1 className="page-title">{prompt.name}</h1>
         <p className="text-sm text-muted-foreground">
           Editing a prompt saves a new version — previous versions are never overwritten.
         </p>

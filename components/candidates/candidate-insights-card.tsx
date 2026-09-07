@@ -73,7 +73,7 @@ export function CandidateInsightsCard({
           <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
             <span>Last generated: {dateFormatter.format(insight.generatedAt)}</span>
             {isStale && (
-              <span className="text-amber-600 dark:text-amber-400">
+              <span className="text-warning">
                 Insights may be out of date
               </span>
             )}

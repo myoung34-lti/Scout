@@ -1,53 +1,122 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react'
 import type { HeadlineStat } from '@/lib/reporting/reporting-service'
 import type { ReportDefinition } from '@/lib/reporting/report-schema'
 import { DrillDownDialog } from '@/components/reporting/drill-down-dialog'
 
-// Only the small arrow/percentage badge is colored — the number stays the
-// visual focus and the card itself is never tinted, per explicit request.
+type Body = {
+  label: string
+  value: number
+  caption: string
+  trend: React.ReactNode
+  // A rendered element, not a component: this is a client component, and a
+  // server parent cannot pass a function across the boundary.
+  icon?: React.ReactNode
+}
+
+function CardBody({ label, value, caption, trend, icon }: Body) {
+  return (
+    <div className="flex items-start gap-3.5">
+      {icon && (
+        // Secondary to the number: tinted tile, accent icon, never filled with
+        // the primary colour itself.
+        <span
+          aria-hidden
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground [&>svg]:size-5"
+        >
+          {icon}
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <p className="mt-0.5 text-3xl font-semibold tabular-nums">{value}</p>
+        {trend}
+        <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+      </div>
+    </div>
+  )
+}
+
+const SURFACE =
+  'w-full rounded-xl border border-border bg-card p-5 text-left shadow-xs transition-colors hover:border-primary/50'
+
+// Only offer a drill-down where the resulting list provably matches the
+// number — a card whose count and list disagree is worse than one that
+// doesn't open at all.
 export function StatCard({
   label,
   stat,
   definition,
+  href,
+  caption,
+  icon,
 }: {
   label: string
-  stat: HeadlineStat
-  definition: ReportDefinition
+  icon?: React.ReactNode
+  stat: HeadlineStat | { current: number; previous?: undefined }
+  definition?: ReportDefinition
+  href?: string
+  caption?: string
 }) {
   const [open, setOpen] = useState(false)
   const { current, previous } = stat
-  const delta = current - previous
-  const pct = previous === 0 ? (current === 0 ? 0 : 100) : Math.round((delta / previous) * 100)
 
+  // A snapshot ("in process right now") has no previous period to compare
+  // against, so it shows no trend rather than a meaningless 0%.
   const trend =
-    delta > 0
-      ? { Icon: ArrowUp, className: 'text-emerald-600 dark:text-emerald-400' }
-      : delta < 0
-        ? { Icon: ArrowDown, className: 'text-red-600 dark:text-red-400' }
-        : { Icon: Minus, className: 'text-muted-foreground' }
+    previous === undefined ? null : (
+      (() => {
+        const delta = current - previous
+        const pct =
+          previous === 0 ? (current === 0 ? 0 : 100) : Math.round((delta / previous) * 100)
+        const t =
+          delta > 0
+            ? { Icon: ArrowUp, className: 'text-success' }
+            : delta < 0
+              ? { Icon: ArrowDown, className: 'text-danger' }
+              : { Icon: Minus, className: 'text-muted-foreground' }
+        return (
+          <div className="mt-2 flex items-center gap-1.5 text-sm">
+            <t.Icon className={`size-4 ${t.className}`} />
+            <span className={`font-medium tabular-nums ${t.className}`}>
+              {delta === 0 ? '0%' : `${pct > 0 ? '+' : ''}${pct}%`}
+            </span>
+            <span className="text-muted-foreground">vs previous 30 days</span>
+          </div>
+        )
+      })()
+    )
+
+  const body = (
+    <CardBody
+      label={label}
+      value={current}
+      caption={caption ?? 'Last 30 days'}
+      trend={trend}
+      icon={icon}
+    />
+  )
+
+  if (href) {
+    return (
+      <Link href={href} className={`block ${SURFACE}`}>
+        {body}
+      </Link>
+    )
+  }
+
+  if (!definition) {
+    return <div className={SURFACE.replace(' hover:border-primary/50', '')}>{body}</div>
+  }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-full rounded-lg border bg-background p-5 text-left transition-colors hover:border-primary/50"
-      >
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <p className="mt-1 text-3xl font-semibold tabular-nums">{current}</p>
-        <div className="mt-2 flex items-center gap-1.5 text-sm">
-          <trend.Icon className={`size-4 ${trend.className}`} />
-          <span className={`font-medium tabular-nums ${trend.className}`}>
-            {delta === 0 ? '0%' : `${pct > 0 ? '+' : ''}${pct}%`}
-          </span>
-          <span className="text-muted-foreground">vs previous 30 days</span>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">Last 30 days</p>
+      <button type="button" onClick={() => setOpen(true)} className={SURFACE}>
+        {body}
       </button>
-
       <DrillDownDialog open={open} onOpenChange={setOpen} definition={definition} groupLabel="Total" />
     </>
   )

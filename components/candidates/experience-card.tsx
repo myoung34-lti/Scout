@@ -21,7 +21,7 @@ export function ExperienceCard({
   const currentYear = new Date().getFullYear()
 
   return (
-    <div className="rounded-lg border bg-background p-4">
+    <div className="rounded-xl border border-border bg-card shadow-xs p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Briefcase className="size-4" />
         Experience
@@ -45,7 +45,7 @@ export function ExperienceCard({
                   {entry.company}
                   {' · '}
                   {showAsCurrent ? (
-                    <span className="text-emerald-600 dark:text-emerald-400">Current</span>
+                    <span className="text-success">Current</span>
                   ) : isStale ? (
                     <>Previous · {entry.startYear ?? '—'} – {entry.endYear}</>
                   ) : (

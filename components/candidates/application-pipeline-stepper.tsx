@@ -12,9 +12,9 @@ import { recommendationOutcome } from '@/lib/interview'
 import type { PipelineStage, RejectionReason, InterviewRecommendation } from '@prisma/client'
 
 const OUTCOME_ICON_CLASS: Record<'pass' | 'maybe' | 'fail', string> = {
-  pass: 'bg-emerald-500 text-white',
-  maybe: 'bg-amber-500 text-white',
-  fail: 'bg-red-500 text-white',
+  pass: 'bg-success text-background',
+  maybe: 'bg-warning text-background',
+  fail: 'bg-danger text-background',
 }
 
 function OutcomeBadge({ recommendation }: { recommendation: InterviewRecommendation }) {
@@ -65,7 +65,7 @@ export function ApplicationPipelineStepper({
     if (!EMAIL_PROMPT_STAGES.includes(stage) && stage !== 'REJECTED') return
     const message =
       stage === 'REJECTED' ? 'Candidate rejected.' : `Moved to ${STAGE_LABELS[stage]}.`
-    toast(message, { action: { label: 'Send email', onClick: openComposeEmail } })
+    toast(message, { action: { label: 'Send email', onClick: () => openComposeEmail() } })
   }
 
   function moveTo(stage: PipelineStage) {

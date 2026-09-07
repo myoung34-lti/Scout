@@ -3,22 +3,29 @@
 import { ALL_RECOMMENDATIONS, RECOMMENDATION_LABELS } from '@/lib/interview'
 import type { InterviewRecommendation } from '@prisma/client'
 
-const SELECTED_CLASS: Record<InterviewRecommendation, string> = {
-  STRONG_NO: 'border-red-600 bg-red-600 text-white',
-  NO: 'border-red-600 bg-red-600 text-white',
-  MAYBE: 'border-foreground bg-foreground text-background',
-  YES: 'border-emerald-600 bg-emerald-600 text-white',
-  STRONG_YES: 'border-emerald-600 bg-emerald-600 text-white',
+// Positive and negative recommendations share their tone, so the scale reads
+// as three groups. Colours come from the shared status tokens rather than a
+// raw palette pair, so both themes follow automatically.
+type Tone = 'negative' | 'neutral' | 'positive'
+
+const TONE: Record<InterviewRecommendation, Tone> = {
+  STRONG_NO: 'negative',
+  NO: 'negative',
+  MAYBE: 'neutral',
+  YES: 'positive',
+  STRONG_YES: 'positive',
 }
 
-const UNSELECTED_CLASS: Record<InterviewRecommendation, string> = {
-  STRONG_NO:
-    'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60',
-  NO: 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60',
-  MAYBE: 'border-input bg-background text-foreground hover:bg-muted',
-  YES: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60',
-  STRONG_YES:
-    'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60',
+const SELECTED: Record<Tone, string> = {
+  negative: 'border-danger bg-danger text-background',
+  neutral: 'border-foreground bg-foreground text-background',
+  positive: 'border-success bg-success text-background',
+}
+
+const UNSELECTED: Record<Tone, string> = {
+  negative: 'border-danger-border bg-danger-soft text-danger hover:brightness-105',
+  neutral: 'border-input bg-background text-foreground hover:bg-muted',
+  positive: 'border-success-border bg-success-soft text-success hover:brightness-105',
 }
 
 export function RecommendationPicker({
@@ -32,13 +39,15 @@ export function RecommendationPicker({
     <div className="flex flex-wrap gap-2">
       {ALL_RECOMMENDATIONS.map((r) => {
         const selected = value === r
+        const tone = TONE[r]
         return (
           <button
             key={r}
             type="button"
             onClick={() => onChange(r)}
+            aria-pressed={selected}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-              selected ? SELECTED_CLASS[r] : UNSELECTED_CLASS[r]
+              selected ? SELECTED[tone] : UNSELECTED[tone]
             }`}
           >
             {RECOMMENDATION_LABELS[r]}

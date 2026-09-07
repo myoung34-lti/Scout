@@ -82,8 +82,11 @@ export type ReportFilter = z.infer<typeof reportFilterSchema>
 export const dateRangeSchema = z
   .object({
     preset: z.enum(DATE_RANGE_PRESETS),
-    start: z.string().max(20).optional(),
-    end: z.string().max(20).optional(),
+    // The builder sends YYYY-MM-DD, but the KPI cards send a full ISO
+    // timestamp so a card's drill-down covers the exact same window the
+    // headline number was counted over — 20 chars silently rejected those.
+    start: z.string().max(40).optional(),
+    end: z.string().max(40).optional(),
   })
   .refine((v) => v.preset !== 'CUSTOM' || (v.start && v.end), {
     message: 'Custom date range requires start and end',

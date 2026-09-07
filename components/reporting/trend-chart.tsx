@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { CHART_TOOLTIP_PROPS } from '@/components/reporting/chart-tooltip'
 import { useFilterParams } from '@/lib/use-filter-params'
 import { Button } from '@/components/ui/button'
 import type { TrendSeriesPoint } from '@/lib/reporting/reporting-service'
@@ -30,7 +31,7 @@ export function TrendChart({
   const { setSingle } = useFilterParams()
 
   return (
-    <div className="rounded-lg border bg-background p-5">
+    <div className="rounded-xl border border-border bg-card shadow-xs p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Recruiting Activity Over Time</h2>
         <div className="flex gap-1.5">
@@ -55,18 +56,18 @@ export function TrendChart({
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis dataKey="label" tick={{ fontSize: 12 }} />
             <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-            <Tooltip />
+            <Tooltip {...CHART_TOOLTIP_PROPS} />
             <Legend />
-            <Line type="monotone" dataKey="added" name="Added" stroke="#2563eb" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="added" name="Added" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
             <Line
               type="monotone"
               dataKey="interviewed"
               name="Interviewed"
-              stroke="#f59e0b"
+              stroke="var(--chart-4)"
               strokeWidth={2}
               dot={false}
             />
-            <Line type="monotone" dataKey="hired" name="Hired" stroke="#16a34a" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="hired" name="Hired" stroke="var(--chart-3)" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       )}

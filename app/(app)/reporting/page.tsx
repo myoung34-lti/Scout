@@ -35,7 +35,7 @@ export default async function ReportingPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Reporting</h1>
+        <h1 className="page-title">Reporting</h1>
         <p className="text-muted-foreground">
           Build, visualize, and save reports across your recruiting data.
         </p>

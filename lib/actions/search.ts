@@ -2,9 +2,14 @@
 
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
-import { CANDIDATES_PAGE_SIZE } from '@/lib/candidate-search'
-import type { AddedDatePreset } from '@/lib/candidate-search'
-import type { PipelineStage } from '@prisma/client'
+import { CANDIDATES_PAGE_SIZE, CANDIDATE_STATUS_KEYS } from '@/lib/candidate-search'
+import type {
+  AddedDatePreset,
+  CandidateSort,
+  CandidateStatusKey,
+} from '@/lib/candidate-search'
+import type { PipelineStage, Prisma } from '@prisma/client'
+import { ACTIVE_STAGES, FORMAL_INTERVIEW_STAGES } from '@/lib/pipeline'
 
 export type CandidateSearchFilters = {
   query?: string
@@ -19,7 +24,19 @@ export type CandidateSearchFilters = {
   addedPreset?: AddedDatePreset
   addedFrom?: string
   addedTo?: string
+  recruiterId?: string
+  status?: CandidateStatusKey
+  sort?: CandidateSort
   page?: number
+}
+
+// Sorting is chosen from a fixed map rather than built from the raw param, so
+// a crafted `sort` value can never reach Prisma as a field name.
+const SORT_ORDER: Record<CandidateSort, Prisma.CandidateOrderByWithRelationInput[]> = {
+  added: [{ createdAt: 'desc' }],
+  name: [{ firstName: 'asc' }, { lastName: 'asc' }],
+  // Unrated candidates sort last either way rather than leading the list.
+  rating: [{ rating: { sort: 'desc', nulls: 'last' } }],
 }
 
 export async function searchCandidates(filters: CandidateSearchFilters) {
@@ -38,6 +55,9 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
     addedPreset,
     addedFrom,
     addedTo,
+    recruiterId,
+    status,
+    sort = 'added',
     page = 1,
   } = filters
   const hasStages = stages && stages.length > 0
@@ -119,6 +139,8 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
       ? [{ tags: { some: { tagId: { in: tagIds } } } }]
       : []),
     ...(addedCondition ? [addedCondition] : []),
+    ...(recruiterId ? [{ ownerId: recruiterId }] : []),
+    ...(status && status !== 'all' ? [STATUS_WHERE[status]] : []),
     bucketCondition,
   ]
 
@@ -130,8 +152,9 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
       include: {
         applications: { include: { job: true } },
         tags: { include: { tag: true } },
+        owner: { select: { id: true, name: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: SORT_ORDER[sort] ?? SORT_ORDER.added,
       skip: (page - 1) * CANDIDATES_PAGE_SIZE,
       take: CANDIDATES_PAGE_SIZE,
     }),
@@ -139,4 +162,28 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
   ])
 
   return { candidates, totalCount }
+}
+
+// Drives the counted tabs above the list. Each count is the same predicate the
+// tab itself filters by, so the number and the resulting list always agree.
+const STATUS_WHERE: Record<CandidateStatusKey, Prisma.CandidateWhereInput> = {
+  all: {},
+  active: { applications: { some: { stage: { in: ACTIVE_STAGES } } } },
+  interviewing: { applications: { some: { stage: { in: FORMAL_INTERVIEW_STAGES } } } },
+  hired: { applications: { some: { stage: 'HIRED' } } },
+  rejected: { applications: { some: { stage: 'REJECTED' } } },
+  pool: { inTalentPool: true },
+}
+
+export async function getCandidateStatusCounts(): Promise<Record<CandidateStatusKey, number>> {
+  await requireSession()
+
+  const keys = [...CANDIDATE_STATUS_KEYS]
+  const counts = await Promise.all(
+    keys.map((k) => prisma.candidate.count({ where: STATUS_WHERE[k] }))
+  )
+  return Object.fromEntries(keys.map((k, i) => [k, counts[i]])) as Record<
+    CandidateStatusKey,
+    number
+  >
 }

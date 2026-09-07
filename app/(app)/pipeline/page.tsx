@@ -11,8 +11,8 @@ export default async function PipelinePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Pipeline</h1>
-        <p className="text-muted-foreground">
+        <h1 className="page-title">Pipeline</h1>
+        <p className="text-sm text-muted-foreground">
           Every candidate in process across all open and on-hold positions.
         </p>
       </div>

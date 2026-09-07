@@ -20,7 +20,7 @@ export default async function EmailTemplatesPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Email Templates</h1>
+          <h1 className="page-title">Email Templates</h1>
           <p className="text-sm text-muted-foreground">
             Reusable candidate email templates, selectable from Compose Email.
           </p>
