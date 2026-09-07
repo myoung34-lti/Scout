@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { CHART_TOOLTIP_PROPS } from '@/components/reporting/chart-tooltip'
 import { useFilterParams } from '@/lib/use-filter-params'
 import { Button } from '@/components/ui/button'
 import type { TrendSeriesPoint } from '@/lib/reporting/reporting-service'
@@ -55,7 +56,7 @@ export function TrendChart({
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis dataKey="label" tick={{ fontSize: 12 }} />
             <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-            <Tooltip />
+            <Tooltip {...CHART_TOOLTIP_PROPS} />
             <Legend />
             <Line type="monotone" dataKey="added" name="Added" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
             <Line

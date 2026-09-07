@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { CHART_TOOLTIP_PROPS } from '@/components/reporting/chart-tooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { ReportResult, Visualization } from '@/lib/reporting/report-schema'
 
@@ -93,7 +94,7 @@ export function ReportResults({
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="category" tick={{ fontSize: 12 }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-              <Tooltip />
+              <Tooltip {...CHART_TOOLTIP_PROPS} />
               {result.series.map((s) => (
                 <Line
                   key={s.name}
@@ -117,7 +118,7 @@ export function ReportResults({
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="category" tick={{ fontSize: 12 }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-              <Tooltip />
+              <Tooltip {...CHART_TOOLTIP_PROPS} />
               {result.series.map((s) => (
                 <Bar key={s.name} dataKey={s.name} fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
               ))}
