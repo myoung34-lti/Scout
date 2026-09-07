@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, Users, Kanban, Bookmark, ScrollText, Mail, ShieldCheck, BookOpen, BarChart3 } from 'lucide-react'
+import { Home, Briefcase, Users, Kanban, Bookmark, ScrollText, Mail, ShieldCheck, BookOpen, BarChart3 } from 'lucide-react'
 
 // Order is unchanged from before the redesign (decision #4) — the groups only
 // add labels over the existing sequence so a nine-item list stays scannable.
@@ -10,6 +10,7 @@ const GROUPS = [
   {
     label: 'Recruiting',
     links: [
+      { href: '/home', label: 'Home', icon: Home },
       { href: '/jobs', label: 'Jobs', icon: Briefcase },
       { href: '/candidates', label: 'Candidates', icon: Users },
       { href: '/pipeline', label: 'Pipeline', icon: Kanban },

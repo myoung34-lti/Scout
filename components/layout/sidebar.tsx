@@ -12,7 +12,7 @@ import { SidebarDrawer } from '@/components/layout/sidebar-drawer'
 
 function SidebarBrand() {
   return (
-    <Link href="/jobs" className="flex items-center gap-2.5">
+    <Link href="/home" className="flex items-center gap-2.5">
       <ScoutMark className="size-6 shrink-0 text-sidebar-primary" />
       <span className="flex flex-col leading-none">
         <span className="font-heading text-lg font-bold tracking-tight text-sidebar-foreground">
