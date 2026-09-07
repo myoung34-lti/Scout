@@ -13,8 +13,7 @@ import { CandidateInsightsCard } from '@/components/candidates/candidate-insight
 import { ComposeEmailProvider } from '@/components/candidates/compose-email-provider'
 import { TagInput } from '@/components/candidates/tag-input'
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card'
-import { ProfileTabs, ProfileTabsProvider } from '@/components/candidates/profile-tabs'
-import { InsightsRailCard } from '@/components/candidates/insights-rail-card'
+import { ProfileTabs } from '@/components/candidates/profile-tabs'
 import { CandidateHeaderActions } from '@/components/candidates/candidate-header-actions'
 import { listTags } from '@/lib/actions/tags'
 import { listJobs } from '@/lib/actions/jobs'
@@ -127,7 +126,6 @@ export default async function CandidateProfilePage({
       staticVariables={composeGlobals.staticVariables}
       emailTemplates={composeGlobals.emailTemplates}
     >
-    <ProfileTabsProvider>
     <div className="space-y-6">
       <BackButton />
 
@@ -315,16 +313,6 @@ export default async function CandidateProfilePage({
         </div>
 
         <div className="space-y-4">
-          <InsightsRailCard
-            hasInsight={Boolean(candidate.insight)}
-            generatedAt={
-              candidate.insight ? shortDateFormatter.format(candidate.insight.generatedAt) : null
-            }
-            isStale={Boolean(
-              candidate.insight && latestActivityAt > candidate.insight.generatedAt
-            )}
-          />
-
           <div className="rounded-xl border border-border bg-card shadow-xs p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Users className="size-4" />
@@ -393,7 +381,6 @@ export default async function CandidateProfilePage({
         </div>
       </div>
     </div>
-    </ProfileTabsProvider>
     </ComposeEmailProvider>
   )
 }
