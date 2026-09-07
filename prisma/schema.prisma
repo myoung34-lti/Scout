@@ -107,6 +107,8 @@ model User {
   generatedInsights            CandidateInsight[]
   askScoutMessages             AskScoutMessage[]
   savedReports                 SavedReport[]
+  recruitingJobs               Job[]                  @relation("JobRecruiter")
+  sourcingJobs                 Job[]                  @relation("JobSourcer")
 }
 
 model Job {
@@ -126,7 +128,16 @@ model Job {
   greenhouseJobId BigInt?       @unique
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  // Who is working the role. Nullable because every existing job predates
+  // these fields — an unassigned job is a real state, not bad data.
+  recruiterId     String?       @db.Uuid
+  recruiter       User?         @relation("JobRecruiter", fields: [recruiterId], references: [id])
+  sourcerId       String?       @db.Uuid
+  sourcer         User?         @relation("JobSourcer", fields: [sourcerId], references: [id])
   applications    Application[]
+
+  @@index([recruiterId])
+  @@index([sourcerId])
 }
 
 model Candidate {

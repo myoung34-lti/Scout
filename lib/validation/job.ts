@@ -10,6 +10,14 @@ const checkbox = z
   .union([z.literal('on'), z.undefined(), z.null()])
   .transform((v) => v === 'on')
 
+const assigneeId = z
+  .string()
+  .trim()
+  .transform((v) => (v === '' || v === 'NONE' ? null : v))
+  .nullable()
+  .optional()
+  .transform((v) => v ?? null)
+
 export const jobSchema = z.object({
   internalName: z.string().trim().min(1, 'Internal name is required'),
   externalName: z.string().trim().min(1, 'External name is required'),
@@ -21,6 +29,10 @@ export const jobSchema = z.object({
   isHybrid: checkbox,
   description: optionalText,
   status: z.enum(['OPEN', 'CLOSED', 'ON_HOLD']),
+  // '' comes from the "Unassigned" option; stored as null rather than an
+  // empty string so the foreign key stays valid.
+  recruiterId: assigneeId,
+  sourcerId: assigneeId,
 })
 
 export type JobFormValues = z.infer<typeof jobSchema>

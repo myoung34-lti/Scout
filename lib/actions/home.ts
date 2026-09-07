@@ -20,13 +20,14 @@ function quarterStart(d = new Date()) {
 export type HomeSnapshot = {
   userName: string | null
   userId: string
+  jobsAssigned: number
   inProcess: number
   hiresThisQuarter: number
   quarterLabel: string
-  // The funnel the dashboard leads with. Scoped by Candidate.owner because
-  // that is the only assignment Scout records today — it becomes "jobs I'm
-  // the recruiter on" once Job gains a recruiter field.
+  // The funnel leads the dashboard: everyone in process on the jobs I'm the
+  // recruiter for.
   funnel: { stage: PipelineStage; count: number }[]
+  jobsByRecruiter: { userId: string | null; name: string; open: number; inProcess: number }[]
   stalled: {
     candidateId: string
     name: string
@@ -49,10 +50,28 @@ export type HomeSnapshot = {
 export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   const authUser = await requireSession()
   const mine = { candidate: { ownerId: authUser.id } }
+  // The funnel and the Jobs Assigned count follow job assignment; the quiet
+  // list and hires follow candidate ownership. Two different questions.
+  const myJobs = { job: { recruiterId: authUser.id } }
   const qStart = quarterStart()
 
-  const [user, activeApps, hires, openInterviews] = await Promise.all([
+  const [user, jobsAssigned, funnelApps, allOpenJobs, activeApps, hires, openInterviews] =
+    await Promise.all([
     prisma.user.findUnique({ where: { id: authUser.id }, select: { name: true } }),
+    prisma.job.count({ where: { recruiterId: authUser.id, status: { in: ['OPEN', 'ON_HOLD'] } } }),
+    prisma.application.findMany({
+      where: { stage: { in: IN_PROCESS_STAGES }, ...myJobs },
+      select: { stage: true, candidateId: true },
+    }),
+    prisma.job.findMany({
+      where: { status: { in: ['OPEN', 'ON_HOLD'] } },
+      select: {
+        id: true,
+        recruiterId: true,
+        recruiter: { select: { name: true } },
+        _count: { select: { applications: { where: { stage: { in: IN_PROCESS_STAGES } } } } },
+      },
+    }),
     prisma.application.findMany({
       where: { stage: { in: IN_PROCESS_STAGES }, ...mine },
       select: {
@@ -138,20 +157,42 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
     .sort((a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime())
 
   const countByStage = new Map<PipelineStage, number>()
-  for (const a of activeApps) {
+  for (const a of funnelApps) {
     countByStage.set(a.stage, (countByStage.get(a.stage) ?? 0) + 1)
+  }
+
+  // Grouped in application code rather than SQL because the unassigned bucket
+  // has no row to group by.
+  const byRecruiter = new Map<string | null, { name: string; open: number; inProcess: number }>()
+  for (const j of allOpenJobs) {
+    const key = j.recruiterId
+    const entry = byRecruiter.get(key) ?? {
+      name: j.recruiter?.name ?? 'Unassigned',
+      open: 0,
+      inProcess: 0,
+    }
+    entry.open += 1
+    entry.inProcess += j._count.applications
+    byRecruiter.set(key, entry)
   }
 
   return {
     userName: user?.name ?? null,
     userId: authUser.id,
-    inProcess: new Set(activeApps.map((a) => a.candidateId)).size,
+    jobsAssigned,
+    inProcess: new Set(funnelApps.map((a) => a.candidateId)).size,
     hiresThisQuarter: new Set(hires.map((h) => h.candidateId)).size,
     quarterLabel: `Q${Math.floor(qStart.getMonth() / 3) + 1} ${qStart.getFullYear()}`,
     funnel: IN_PROCESS_STAGES.map((stage) => ({
       stage,
       count: countByStage.get(stage) ?? 0,
     })),
+    jobsByRecruiter: [...byRecruiter.entries()]
+      .map(([userId, v]) => ({ userId, ...v }))
+      // Unassigned last, otherwise busiest first.
+      .sort((a, b) =>
+        a.userId === null ? 1 : b.userId === null ? -1 : b.open - a.open
+      ),
     stalled: stalledAll.slice(0, STALLED_LIMIT),
     stalledTotal: stalledAll.length,
     openInterviews: openInterviews.map((i) => ({

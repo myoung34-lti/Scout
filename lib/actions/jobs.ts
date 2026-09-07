@@ -32,7 +32,11 @@ export async function listJobs(
         : {}),
     },
     orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { applications: true } } },
+    include: {
+      _count: { select: { applications: true } },
+      recruiter: { select: { id: true, name: true } },
+      sourcer: { select: { id: true, name: true } },
+    },
   })
 }
 
@@ -88,6 +92,8 @@ function readJobFormData(formData: FormData) {
     isHybrid: formData.get('isHybrid'),
     description: formData.get('description'),
     status: formData.get('status'),
+    recruiterId: formData.get('recruiterId'),
+    sourcerId: formData.get('sourcerId'),
   }
 }
 

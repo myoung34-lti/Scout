@@ -28,11 +28,13 @@ export function JobForm({
   action,
   defaultValues,
   locations = [],
+  users = [],
   submitLabel = 'Save job',
 }: {
   action: JobFormAction
   defaultValues?: Partial<Job>
   locations?: string[]
+  users?: { id: string; name: string }[]
   submitLabel?: string
 }) {
   const [state, formAction, pending] = useActionState(action, undefined)
@@ -154,6 +156,40 @@ export function JobForm({
               <SelectItem value="OPEN">Open</SelectItem>
               <SelectItem value="ON_HOLD">On hold</SelectItem>
               <SelectItem value="CLOSED">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="recruiterId">Recruiter</Label>
+          <Select name="recruiterId" defaultValue={defaultValues?.recruiterId ?? 'NONE'}>
+            <SelectTrigger id="recruiterId" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">Unassigned</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="sourcerId">Sourcer</Label>
+          <Select name="sourcerId" defaultValue={defaultValues?.sourcerId ?? 'NONE'}>
+            <SelectTrigger id="sourcerId" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">Unassigned</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

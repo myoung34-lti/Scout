@@ -42,19 +42,6 @@ function PlannedPanel({ needs, children }: { needs: string; children: React.Reac
   )
 }
 
-function PendingStat({ label, needs }: { label: string; needs: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border-strong bg-muted/40 p-5">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums text-muted-foreground/50">—</p>
-      <Badge variant="warning" className="mt-2">
-        Not built yet
-      </Badge>
-      <p className="mt-1 text-xs text-muted-foreground">Needs: {needs}</p>
-    </div>
-  )
-}
-
 export default async function HomePage() {
   const snapshot = await getHomeSnapshot()
   const firstName = snapshot.userName?.split(' ')[0]
@@ -95,7 +82,12 @@ export default async function HomePage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <PendingStat label="Jobs Assigned" needs="recruiter field on Job" />
+        <StatCard
+          label="Jobs Assigned"
+          stat={{ current: snapshot.jobsAssigned }}
+          href="/jobs?status=ALL"
+          caption="Open + on hold · you as recruiter"
+        />
         <StatCard
           label="Candidates In Process"
           stat={{ current: snapshot.inProcess }}
@@ -126,8 +118,13 @@ export default async function HomePage() {
             {funnelTotal === 0 ? (
               <EmptyState
                 title="Nobody in process"
-                description="Candidates assigned to you between Intro and Offer will appear here."
+                description="Assign yourself as recruiter on a job to see its pipeline here."
                 className="py-8"
+                action={
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/jobs?status=ALL">Browse jobs</Link>
+                  </Button>
+                }
               />
             ) : (
               <ul className="space-y-2.5">
@@ -154,8 +151,7 @@ export default async function HomePage() {
               </ul>
             )}
             <p className="mt-4 text-xs text-muted-foreground">
-              Scoped to candidates assigned to you. Switches to the jobs you&rsquo;re the
-              recruiter on once Job has a recruiter field.
+              Everyone in process on the jobs you&rsquo;re the recruiter for.
             </p>
           </CardContent>
         </Card>
@@ -261,10 +257,32 @@ export default async function HomePage() {
             </CardAction>
           </CardHeader>
           <CardContent>
-            <PlannedPanel needs="sourcer and recruiter fields on Job">
-              Open roles grouped by the recruiter and sourcer they&rsquo;re assigned to, so
-              you can see coverage across the team. Jobs have no owner of any kind today.
-            </PlannedPanel>
+            {snapshot.jobsByRecruiter.length === 0 ? (
+              <EmptyState icon={UsersRound} title="No open roles" className="py-6" />
+            ) : (
+              <ul className="space-y-1.5">
+                {snapshot.jobsByRecruiter.map((r) => (
+                  <li
+                    key={r.userId ?? 'unassigned'}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5"
+                  >
+                    <span
+                      className={`min-w-0 truncate text-sm ${
+                        r.userId ? 'font-medium' : 'text-muted-foreground italic'
+                      }`}
+                    >
+                      {r.name}
+                    </span>
+                    <span className="shrink-0 text-right text-xs text-muted-foreground">
+                      <span className="block tabular-nums">
+                        {r.open} {r.open === 1 ? 'role' : 'roles'}
+                      </span>
+                      <span className="block tabular-nums">{r.inProcess} in process</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>

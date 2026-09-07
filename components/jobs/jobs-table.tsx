@@ -24,7 +24,11 @@ const STATUS_VARIANT: Record<Job['status'], 'success' | 'warning' | 'neutral'> =
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
-type JobWithCount = Job & { _count: { applications: number } }
+type JobWithCount = Job & {
+  _count: { applications: number }
+  recruiter: { id: string; name: string } | null
+  sourcer: { id: string; name: string } | null
+}
 
 function arrangement(job: Job) {
   return [job.isOnsite && 'Onsite', job.isHybrid && 'Hybrid', job.isRemote && 'Remote']
@@ -48,6 +52,7 @@ export function JobsTable({
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Candidates</TableHead>
           <TableHead className="text-right">Hires</TableHead>
+          <TableHead>Recruiter</TableHead>
           <TableHead>Created</TableHead>
         </TableRow>
       </TableHeader>
@@ -80,6 +85,12 @@ export function JobsTable({
               </TableCell>
               <TableCell className="text-right">{job._count.applications}</TableCell>
               <TableCell className="text-right">{hiresByJob[job.id] ?? 0}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {job.recruiter?.name ?? <span className="text-muted-foreground/60">Unassigned</span>}
+                {job.sourcer && (
+                  <span className="block text-xs">Sourcer: {job.sourcer.name}</span>
+                )}
+              </TableCell>
               <TableCell className="text-muted-foreground">
                 {dateFormatter.format(job.createdAt)}
               </TableCell>
