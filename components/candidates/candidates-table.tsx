@@ -18,6 +18,7 @@ import { STAGE_LABELS, stageTone } from '@/lib/pipeline'
 import type { CandidateSort } from '@/lib/candidate-search'
 import type { StageTone } from '@/lib/pipeline'
 import type { PipelineStage } from '@prisma/client'
+import type { ComposeEmailTarget } from '@/components/candidates/compose-email-provider'
 
 const TONE_VARIANT: Record<StageTone, 'neutral' | 'info' | 'warning' | 'success' | 'danger'> = {
   neutral: 'neutral',
@@ -46,6 +47,7 @@ export type CandidateRow = {
   stage: PipelineStage | null
   recruiter: string | null
   tags: string[]
+  composeTarget: ComposeEmailTarget
 }
 
 function initials(first: string, last: string) {
@@ -166,6 +168,7 @@ export function CandidatesTable({
                   candidateName={name}
                   inTalentPool={c.inTalentPool}
                   jobs={jobs}
+                  composeTarget={c.composeTarget}
                 />
               </TableCell>
             </TableRow>

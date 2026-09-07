@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreHorizontal, UserRound, Briefcase, Bookmark, BookmarkX } from 'lucide-react'
+import { MoreHorizontal, UserRound, Briefcase, Bookmark, BookmarkX, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   addCandidateToJob,
@@ -32,19 +32,24 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { useComposeEmail } from '@/components/candidates/compose-email-provider'
+import type { ComposeEmailTarget } from '@/components/candidates/compose-email-provider'
 
 export function CandidateRowActions({
   candidateId,
   candidateName,
   inTalentPool,
   jobs,
+  composeTarget,
 }: {
   candidateId: string
   candidateName: string
   inTalentPool: boolean
   jobs: { id: string; internalName: string }[]
+  composeTarget: ComposeEmailTarget
 }) {
   const router = useRouter()
+  const { openComposeEmail } = useComposeEmail()
   const [jobDialogOpen, setJobDialogOpen] = useState(false)
   const [jobId, setJobId] = useState<string | undefined>()
   const [pending, startTransition] = useTransition()
@@ -97,6 +102,13 @@ export function CandidateRowActions({
           <DropdownMenuItem onSelect={() => router.push(`/candidates/${candidateId}`)}>
             <UserRound className="size-4" />
             View profile
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => openComposeEmail(composeTarget)}
+            disabled={!composeTarget.candidateEmail}
+          >
+            <Mail className="size-4" />
+            Compose email
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setJobDialogOpen(true)}>
             <Briefcase className="size-4" />

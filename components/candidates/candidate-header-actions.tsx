@@ -43,7 +43,7 @@ export function CandidateHeaderActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button onClick={openComposeEmail} disabled={!hasEmail} title={hasEmail ? undefined : 'This candidate has no email address'}>
+      <Button onClick={() => openComposeEmail()} disabled={!hasEmail} title={hasEmail ? undefined : 'This candidate has no email address'}>
         <Mail />
         Compose Email
       </Button>

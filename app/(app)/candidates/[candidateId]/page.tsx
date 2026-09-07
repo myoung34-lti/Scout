@@ -112,15 +112,17 @@ export default async function CandidateProfilePage({
 
   return (
     <ComposeEmailProvider
-      candidateId={candidate.id}
-      candidateEmail={candidate.email}
-      candidateFirstName={candidate.firstName}
-      candidateLastName={candidate.lastName}
-      candidateCurrentCompany={candidate.currentCompany ?? ''}
-      candidateCurrentTitle={candidate.currentTitle ?? ''}
-      jobTitle={relevantApplication?.job.internalName ?? ''}
-      jobLocation={relevantApplication?.job.location ?? ''}
-      applicationId={relevantApplication?.id ?? null}
+      defaultTarget={{
+        candidateId: candidate.id,
+        candidateEmail: candidate.email,
+        candidateFirstName: candidate.firstName,
+        candidateLastName: candidate.lastName,
+        candidateCurrentCompany: candidate.currentCompany ?? '',
+        candidateCurrentTitle: candidate.currentTitle ?? '',
+        jobTitle: relevantApplication?.job.internalName ?? '',
+        jobLocation: relevantApplication?.job.location ?? '',
+        applicationId: relevantApplication?.id ?? null,
+      }}
       recruiterName={composeGlobals.recruiterName}
       recruiterEmail={composeGlobals.recruiterEmail}
       staticVariables={composeGlobals.staticVariables}

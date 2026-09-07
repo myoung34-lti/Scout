@@ -65,7 +65,7 @@ export function ApplicationPipelineStepper({
     if (!EMAIL_PROMPT_STAGES.includes(stage) && stage !== 'REJECTED') return
     const message =
       stage === 'REJECTED' ? 'Candidate rejected.' : `Moved to ${STAGE_LABELS[stage]}.`
-    toast(message, { action: { label: 'Send email', onClick: openComposeEmail } })
+    toast(message, { action: { label: 'Send email', onClick: () => openComposeEmail() } })
   }
 
   function moveTo(stage: PipelineStage) {

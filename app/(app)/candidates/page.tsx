@@ -14,6 +14,8 @@ import type {
 import { listJobs, listDistinctLocations } from '@/lib/actions/jobs'
 import { listTagOptions } from '@/lib/actions/tags'
 import { listUsers } from '@/lib/actions/users'
+import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
+import { ComposeEmailProvider } from '@/components/candidates/compose-email-provider'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ALL_STAGES } from '@/lib/pipeline'
@@ -24,7 +26,11 @@ import type { CandidateRow } from '@/components/candidates/candidates-table'
 import { ActiveFilterPills } from '@/components/candidates/active-filter-pills'
 import { CandidatesPagination } from '@/components/candidates/candidates-pagination'
 import type { PipelineStage } from '@prisma/client'
-import { getCandidateDisplayTitle, findCurrentApplication } from '@/lib/candidate-type'
+import {
+  getCandidateDisplayTitle,
+  findCurrentApplication,
+  findRelevantApplication,
+} from '@/lib/candidate-type'
 
 const ADDED_DATE_PRESETS: AddedDatePreset[] = ['week', 'month', 'custom']
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
@@ -79,7 +85,7 @@ export default async function CandidatesPage({
   ) as CandidateStatusKey | undefined
   const sort = (CANDIDATE_SORTS.find((s) => s === params.sort) ?? 'added') as CandidateSort
 
-  const [{ candidates, totalCount }, counts, jobs, jobLocations, tags, users] =
+  const [{ candidates, totalCount }, counts, jobs, jobLocations, tags, users, composeGlobals] =
     await Promise.all([
       searchCandidates({
         query,
@@ -104,12 +110,18 @@ export default async function CandidatesPage({
       listDistinctLocations(),
       listTagOptions(),
       listUsers(),
+      getComposeEmailGlobals(),
     ])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / CANDIDATES_PAGE_SIZE))
   const jobOptions = jobs.map((j) => ({ id: j.id, internalName: j.internalName }))
 
-  const rows: CandidateRow[] = candidates.map((c) => ({
+  const rows: CandidateRow[] = candidates.map((c) => {
+    // Same relevant-application rule the profile page uses, so an email sent
+    // from the list renders the same job variables as one sent from the
+    // candidate's own page.
+    const relevant = findRelevantApplication(c)
+    return {
     id: c.id,
     firstName: c.firstName,
     lastName: c.lastName,
@@ -123,9 +135,27 @@ export default async function CandidatesPage({
     stage: findCurrentApplication(c)?.stage ?? null,
     recruiter: c.owner?.name ?? null,
     tags: c.tags.map((ct) => ct.tag.displayLabel),
-  }))
+    composeTarget: {
+      candidateId: c.id,
+      candidateEmail: c.email,
+      candidateFirstName: c.firstName,
+      candidateLastName: c.lastName,
+      candidateCurrentCompany: c.currentCompany ?? '',
+      candidateCurrentTitle: c.currentTitle ?? '',
+      jobTitle: relevant?.job.internalName ?? '',
+      jobLocation: relevant?.job.location ?? '',
+      applicationId: relevant?.id ?? null,
+    },
+    }
+  })
 
   return (
+    <ComposeEmailProvider
+      recruiterName={composeGlobals.recruiterName}
+      recruiterEmail={composeGlobals.recruiterEmail}
+      staticVariables={composeGlobals.staticVariables}
+      emailTemplates={composeGlobals.emailTemplates}
+    >
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -168,5 +198,6 @@ export default async function CandidatesPage({
         </div>
       )}
     </div>
+    </ComposeEmailProvider>
   )
 }

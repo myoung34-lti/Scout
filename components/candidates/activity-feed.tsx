@@ -349,7 +349,7 @@ export function ActivityFeed({
       <div className="flex flex-wrap items-center gap-2">
         <AddNoteDialog candidateId={candidateId} />
         <AddInterviewMenu candidateId={candidateId} />
-        <Button size="sm" onClick={openComposeEmail}>
+        <Button size="sm" onClick={() => openComposeEmail()}>
           <Mail />
           Compose Email
         </Button>
