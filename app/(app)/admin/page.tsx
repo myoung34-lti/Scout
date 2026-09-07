@@ -1,4 +1,8 @@
+import Link from 'next/link'
+import { ArrowRight, Undo2 } from 'lucide-react'
 import { listUsers } from '@/lib/actions/users'
+import { countDeletedCandidates } from '@/lib/actions/candidates'
+import { RETENTION_DAYS } from '@/lib/candidate-visibility'
 import { listEmailVariables } from '@/lib/email-variables'
 import {
   Table,
@@ -18,7 +22,11 @@ export const metadata = { title: 'Admin' }
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
 export default async function AdminPage() {
-  const [users, emailVariables] = await Promise.all([listUsers(), listEmailVariables()])
+  const [users, emailVariables, deletedCount] = await Promise.all([
+    listUsers(),
+    listEmailVariables(),
+    countDeletedCandidates(),
+  ])
 
   return (
     <div className="space-y-10">
@@ -96,6 +104,31 @@ export default async function AdminPage() {
             </TableBody>
           </Table>
         </div>
+      </div>
+
+      <div>
+        <h2 className="page-title text-xl">Recovery</h2>
+        <p className="text-sm text-muted-foreground">
+          Deleted candidates are kept for {RETENTION_DAYS} days and can be put back.
+        </p>
+
+        <Link
+          href="/admin/deleted-candidates"
+          className="mt-4 flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-primary/50"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <Undo2 className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">Recover deleted candidates</span>
+            <span className="block text-xs text-muted-foreground">
+              {deletedCount === 0
+                ? 'Nothing deleted right now.'
+                : `${deletedCount} candidate${deletedCount === 1 ? '' : 's'} recoverable.`}
+            </span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        </Link>
       </div>
     </div>
   )

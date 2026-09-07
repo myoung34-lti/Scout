@@ -414,7 +414,7 @@ export async function deleteCandidate(candidateId: string) {
   })
 
   revalidatePath('/candidates')
-  revalidatePath('/candidates/deleted')
+  revalidatePath('/admin/deleted-candidates')
 }
 
 export async function restoreCandidate(candidateId: string) {
@@ -426,7 +426,7 @@ export async function restoreCandidate(candidateId: string) {
   })
 
   revalidatePath('/candidates')
-  revalidatePath('/candidates/deleted')
+  revalidatePath('/admin/deleted-candidates')
 }
 
 export async function listDeletedCandidates() {
@@ -467,4 +467,9 @@ export async function removeFromJob(applicationId: string) {
   revalidatePath(`/candidates/${application.candidateId}`)
   revalidatePath(`/jobs/${application.jobId}`)
   revalidatePath('/pipeline')
+}
+
+export async function countDeletedCandidates() {
+  await requireSession()
+  return prisma.candidate.count({ where: { NOT: { deletedAt: null } } })
 }

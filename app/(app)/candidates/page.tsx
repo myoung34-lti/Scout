@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Users, Trash2 } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 import { searchCandidates, getCandidateStatusCounts } from '@/lib/actions/search'
 import {
   CANDIDATES_PAGE_SIZE,
@@ -170,20 +170,12 @@ export default async function CandidatesPage({
             Find, track, and engage top talent.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/candidates/deleted">
-              <Trash2 />
-              Deleted
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/candidates/new">
-              <Plus />
-              Add Candidate
-            </Link>
-          </Button>
-        </div>
+        <Button asChild>
+          <Link href="/candidates/new">
+            <Plus />
+            Add Candidate
+          </Link>
+        </Button>
       </div>
 
       <CandidateStatusTabs counts={counts} />

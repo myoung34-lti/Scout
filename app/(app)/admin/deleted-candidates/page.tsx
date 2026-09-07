@@ -14,7 +14,7 @@ import {
 import { RestoreCandidateButton } from '@/components/candidates/restore-candidate-button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 
-export const metadata = { title: 'Deleted Candidates' }
+export const metadata = { title: 'Recover Deleted Candidates' }
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
@@ -25,9 +25,12 @@ export default async function DeletedCandidatesPage() {
     <div className="space-y-5">
       <div>
         <Breadcrumb
-          items={[{ label: 'Candidates', href: '/candidates' }, { label: 'Deleted' }]}
+          items={[
+            { label: 'Admin', href: '/admin' },
+            { label: 'Recover Deleted Candidates' },
+          ]}
         />
-        <h1 className="page-title">Deleted Candidates</h1>
+        <h1 className="page-title">Recover Deleted Candidates</h1>
         <p className="text-sm text-muted-foreground">
           Restorable for {RETENTION_DAYS} days. Their applications, interviews, notes and
           emails are all kept, so restoring puts everything back as it was.
