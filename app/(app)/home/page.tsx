@@ -1,12 +1,10 @@
 import Link from 'next/link'
-import { ArrowRight, Briefcase, UserPlus, Plus } from 'lucide-react'
+import { ArrowRight, CalendarClock, Clock, UserPlus, Plus, UsersRound } from 'lucide-react'
 import { getHomeSnapshot } from '@/lib/actions/home'
-import {
-  getReportingHeadlineStats,
-  getHeadlineCurrentPeriodDefinition,
-} from '@/lib/reporting/reporting-service'
-import { STAGE_LABELS, stageTone } from '@/lib/pipeline'
-import type { StageTone } from '@/lib/pipeline'
+import { STAGE_LABELS, stageTone, IN_PROCESS_STAGES } from '@/lib/pipeline'
+import { INTERVIEW_TYPE_LABELS } from '@/lib/interview'
+import type { InterviewType } from '@prisma/client'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -14,22 +12,30 @@ import { StatCard } from '@/components/reporting/stat-card'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
-const TONE_BAR: Record<StageTone, string> = {
-  neutral: 'bg-muted-foreground/40',
-  info: 'bg-info',
-  warning: 'bg-warning',
-  success: 'bg-success',
-  danger: 'bg-danger',
+// Marks a panel whose real data needs a schema change we've deliberately
+// deferred, so it reads as "not built yet" rather than "broken" or, worse,
+// as real data.
+function PlannedPanel({ needs, children }: { needs: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border-strong bg-muted/40 p-4">
+      <Badge variant="warning" className="mb-2">
+        Not built yet
+      </Badge>
+      <p className="text-sm text-muted-foreground">{children}</p>
+      <p className="mt-2 text-xs text-muted-foreground">Needs: {needs}</p>
+    </div>
+  )
 }
 
 export default async function HomePage() {
-  const [snapshot, stats] = await Promise.all([
-    getHomeSnapshot(),
-    getReportingHeadlineStats(),
-  ])
-
+  const snapshot = await getHomeSnapshot()
   const firstName = snapshot.userName?.split(' ')[0]
-  const busiest = Math.max(1, ...snapshot.stageCounts.map((s) => s.count))
+
+  // Exactly the predicate behind the In Process number, so the card and the
+  // list it opens can't disagree.
+  const inProcessHref = `/candidates?recruiterId=${snapshot.userId}&${IN_PROCESS_STAGES.map(
+    (s) => `stage=${s}`
+  ).join('&')}`
 
   return (
     <div className="space-y-6">
@@ -39,7 +45,7 @@ export default async function HomePage() {
             {firstName ? `Welcome back, ${firstName}` : 'Home'}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Where things stand across your pipeline today.
+            Your candidates, and what needs moving today.
           </p>
         </div>
         <div className="flex gap-2">
@@ -60,62 +66,60 @@ export default async function HomePage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Candidates Added"
-          stat={stats.added}
-          definition={getHeadlineCurrentPeriodDefinition('CANDIDATES_ADDED')}
+          label="In Process"
+          stat={{ current: snapshot.inProcess }}
+          href={inProcessHref}
+          caption="Assigned to you · Intro → Offer"
         />
         <StatCard
-          label="Candidates Interviewed"
-          stat={stats.interviewed}
-          definition={getHeadlineCurrentPeriodDefinition('CANDIDATES_INTERVIEWED')}
+          label="Interviewed"
+          stat={snapshot.interviewed30d}
+          caption="Your candidates · last 30 days"
         />
         <StatCard
-          label="Candidates Hired"
-          stat={stats.hired}
-          definition={getHeadlineCurrentPeriodDefinition('CANDIDATES_HIRED')}
+          label="Hired"
+          stat={snapshot.hired30d}
+          caption="Your candidates · last 30 days"
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>In process</CardTitle>
+            <CardTitle>Not moved in over a week</CardTitle>
             <CardAction>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/pipeline">
-                  Open pipeline
-                  <ArrowRight />
-                </Link>
-              </Button>
+              {snapshot.stalledTotal > snapshot.stalled.length && (
+                <span className="text-xs text-muted-foreground">
+                  showing {snapshot.stalled.length} of {snapshot.stalledTotal}
+                </span>
+              )}
             </CardAction>
           </CardHeader>
           <CardContent>
-            {snapshot.activeTotal === 0 ? (
+            {snapshot.stalled.length === 0 ? (
               <EmptyState
-                title="Nobody in process"
-                description="Add a candidate to an open job to start the pipeline."
+                icon={Clock}
+                title="Nothing is stuck"
+                description="Every candidate assigned to you has moved stage in the last week."
+                className="py-8"
               />
             ) : (
-              <ul className="space-y-2.5">
-                {snapshot.stageCounts.map(({ stage, count }) => (
-                  <li key={stage}>
+              <ul className="divide-y divide-border">
+                {snapshot.stalled.map((s) => (
+                  <li key={s.candidateId + s.jobName}>
                     <Link
-                      href="/pipeline"
-                      className="group flex items-center gap-3 text-sm"
+                      href={`/candidates/${s.candidateId}`}
+                      className="flex items-center gap-3 py-2.5 transition-colors hover:text-primary"
                     >
-                      <span className="w-40 shrink-0 truncate text-muted-foreground group-hover:text-foreground">
-                        {STAGE_LABELS[stage]}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{s.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {s.jobName}
+                        </span>
                       </span>
-                      {/* Bar length is relative to the busiest stage, so the
-                          shape of the funnel is legible at a glance. */}
-                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <span
-                          className={`block h-full rounded-full ${TONE_BAR[stageTone(stage)]}`}
-                          style={{ width: `${Math.round((count / busiest) * 100)}%` }}
-                        />
-                      </span>
-                      <span className="w-8 shrink-0 text-right font-medium tabular-nums">
-                        {count}
+                      <Badge variant={stageTone(s.stage)}>{STAGE_LABELS[s.stage]}</Badge>
+                      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                        {s.daysStalled}d ago
                       </span>
                     </Link>
                   </li>
@@ -127,34 +131,52 @@ export default async function HomePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Roles with nobody in process</CardTitle>
+            <CardTitle>Your interviews</CardTitle>
+            <CardAction>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/pipeline">
+                  Pipeline
+                  <ArrowRight />
+                </Link>
+              </Button>
+            </CardAction>
           </CardHeader>
-          <CardContent>
-            {snapshot.unstaffedJobs.length === 0 ? (
+          <CardContent className="space-y-3">
+            <PlannedPanel needs="a scheduled date/time on Interview">
+              Upcoming interviews, ordered by when they happen. Interviews are already
+              assigned to a recruiter today, but nothing records <em>when</em> one is
+              scheduled — so &ldquo;upcoming&rdquo; can&rsquo;t be ordered yet.
+            </PlannedPanel>
+
+            {snapshot.openInterviews.length === 0 ? (
               <EmptyState
-                icon={Briefcase}
-                title="Every open role has candidates"
-                description={`All ${snapshot.openJobCount} open roles have someone in process.`}
-                className="py-8"
+                icon={CalendarClock}
+                title="No open interviews"
+                description="Interviews assigned to you that aren't complete will appear here."
+                className="py-6"
               />
             ) : (
-              <ul className="space-y-2">
-                {snapshot.unstaffedJobs.map((job) => (
-                  <li key={job.id}>
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      className="block rounded-lg border border-border p-2.5 transition-colors hover:border-primary/50"
-                    >
-                      <span className="block truncate text-sm font-medium">
-                        {job.internalName}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {job.location}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <div>
+                <p className="section-label mb-2">Assigned to you, not yet completed</p>
+                <ul className="space-y-1.5">
+                  {snapshot.openInterviews.map((i) => (
+                    <li key={i.id}>
+                      <Link
+                        href={`/candidates/${i.candidateId}/interview/${i.id}`}
+                        className="block rounded-lg border border-border p-2.5 transition-colors hover:border-primary/50"
+                      >
+                        <span className="block truncate text-sm font-medium">
+                          {i.candidateName}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {INTERVIEW_TYPE_LABELS[i.type as InterviewType]} · started{' '}
+                          {dateFormatter.format(i.createdAt)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -162,41 +184,17 @@ export default async function HomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recently added</CardTitle>
+          <CardTitle>Jobs by recruiter</CardTitle>
           <CardAction>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/candidates">
-                All candidates
-                <ArrowRight />
-              </Link>
-            </Button>
+            <UsersRound className="size-4 text-muted-foreground" />
           </CardAction>
         </CardHeader>
         <CardContent>
-          {snapshot.recentCandidates.length === 0 ? (
-            <EmptyState title="No candidates yet" className="py-8" />
-          ) : (
-            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {snapshot.recentCandidates.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/candidates/${c.id}`}
-                    className="flex h-full flex-col rounded-lg border border-border p-3 transition-colors hover:border-primary/50"
-                  >
-                    <span className="truncate text-sm font-medium">{c.name}</span>
-                    {c.subtitle && (
-                      <span className="truncate text-xs text-muted-foreground">
-                        {c.subtitle}
-                      </span>
-                    )}
-                    <span className="mt-1 text-xs text-muted-foreground">
-                      Added {dateFormatter.format(c.addedAt)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <PlannedPanel needs="sourcer and recruiter fields on Job">
+            Open roles grouped by the recruiter and sourcer they&rsquo;re assigned to, so
+            you can see coverage across the team at a glance. Jobs currently have no
+            owner of any kind — recruiter only exists on candidates and interviews.
+          </PlannedPanel>
         </CardContent>
       </Card>
     </div>

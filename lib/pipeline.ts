@@ -102,6 +102,18 @@ export function stageTone(stage: PipelineStage): StageTone {
   return STAGE_TONES[stage]
 }
 
+// "In process" for dashboard purposes: actively being worked, from the first
+// real conversation through Offer. Deliberately excludes Applied/Screening
+// (not yet engaged) and the terminal stages.
+export const IN_PROCESS_STAGES: PipelineStage[] = [
+  'INTRODUCTORY_CALL',
+  'BEHAVIORAL_INTERVIEW',
+  'TECHNICAL_INTERVIEW',
+  'EXECUTIVE_INTERVIEW',
+  'CLIENT_INTERVIEW',
+  'OFFER',
+]
+
 // Advancing into one of these stages (or rejecting, checked separately)
 // prompts a "send an email?" toast — the earlier Applied/Screening bump and
 // Offer/Hired are deliberately excluded, since those aren't typically
