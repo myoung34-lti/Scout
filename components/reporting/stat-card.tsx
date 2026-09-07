@@ -7,16 +7,36 @@ import type { HeadlineStat } from '@/lib/reporting/reporting-service'
 import type { ReportDefinition } from '@/lib/reporting/report-schema'
 import { DrillDownDialog } from '@/components/reporting/drill-down-dialog'
 
-type Body = { label: string; value: number; caption: string; trend: React.ReactNode }
+type Body = {
+  label: string
+  value: number
+  caption: string
+  trend: React.ReactNode
+  // A rendered element, not a component: this is a client component, and a
+  // server parent cannot pass a function across the boundary.
+  icon?: React.ReactNode
+}
 
-function CardBody({ label, value, caption, trend }: Body) {
+function CardBody({ label, value, caption, trend, icon }: Body) {
   return (
-    <>
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums">{value}</p>
-      {trend}
-      <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
-    </>
+    <div className="flex items-start gap-3.5">
+      {icon && (
+        // Secondary to the number: tinted tile, accent icon, never filled with
+        // the primary colour itself.
+        <span
+          aria-hidden
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground [&>svg]:size-5"
+        >
+          {icon}
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <p className="mt-0.5 text-3xl font-semibold tabular-nums">{value}</p>
+        {trend}
+        <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+      </div>
+    </div>
   )
 }
 
@@ -32,8 +52,10 @@ export function StatCard({
   definition,
   href,
   caption,
+  icon,
 }: {
   label: string
+  icon?: React.ReactNode
   stat: HeadlineStat | { current: number; previous?: undefined }
   definition?: ReportDefinition
   href?: string
@@ -74,6 +96,7 @@ export function StatCard({
       value={current}
       caption={caption ?? 'Last 30 days'}
       trend={trend}
+      icon={icon}
     />
   )
 

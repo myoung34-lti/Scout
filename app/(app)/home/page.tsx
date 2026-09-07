@@ -1,8 +1,16 @@
 import Link from 'next/link'
-import { ArrowRight, CalendarClock, Clock, UserPlus, Plus } from 'lucide-react'
+import {
+  ArrowRight,
+  Briefcase,
+  ClipboardCheck,
+  Clock,
+  Plus,
+  Trophy,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import { getHomeSnapshot } from '@/lib/actions/home'
 import { STAGE_LABELS, stageTone, IN_PROCESS_STAGES } from '@/lib/pipeline'
-import type { StageTone } from '@/lib/pipeline'
 import { INTERVIEW_TYPE_LABELS } from '@/lib/interview'
 import type { InterviewType } from '@prisma/client'
 import { Badge } from '@/components/ui/badge'
@@ -12,35 +20,18 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { StatCard } from '@/components/reporting/stat-card'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
-
-const TONE_BAR: Record<StageTone, string> = {
-  neutral: 'bg-muted-foreground/40',
-  info: 'bg-info',
-  warning: 'bg-warning',
-  success: 'bg-success',
-  danger: 'bg-danger',
-}
+const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
 
 const ACTIVITY_LABEL: Record<'stage' | 'note' | 'email' | 'applied', string> = {
-  stage: 'stage move',
-  note: 'note',
-  email: 'email',
-  applied: 'applied',
+  stage: 'Stage moved',
+  note: 'Note added',
+  email: 'Email sent',
+  applied: 'Applied',
 }
 
-// Marks something the dashboard will show once a deferred schema change
-// lands — so a gap reads as planned rather than broken.
-function PlannedPanel({ needs, children }: { needs: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-dashed border-border-strong bg-muted/40 p-4">
-      <Badge variant="warning" className="mb-2">
-        Not built yet
-      </Badge>
-      <p className="text-sm text-muted-foreground">{children}</p>
-      <p className="mt-2 text-xs text-muted-foreground">Needs: {needs}</p>
-    </div>
-  )
-}
+// Both scrolling regions share a height so the two cards line up on desktop
+// without either growing unbounded as data accumulates.
+const SCROLL_REGION = 'max-h-[19rem] overflow-y-auto'
 
 export default async function HomePage() {
   const snapshot = await getHomeSnapshot()
@@ -55,7 +46,7 @@ export default async function HomePage() {
   ).join('&')}`
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="page-title">
@@ -84,27 +75,30 @@ export default async function HomePage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Jobs Assigned"
+          icon={<Briefcase />}
           stat={{ current: snapshot.jobsAssigned }}
           href="/jobs?status=ALL"
           caption="Open + on hold · you as recruiter"
         />
         <StatCard
           label="Candidates In Process"
+          icon={<Users />}
           stat={{ current: snapshot.inProcess }}
           href={inProcessHref}
           caption="Assigned to you · Intro → Offer"
         />
         <StatCard
           label="Hires This Quarter"
+          icon={<Trophy />}
           stat={{ current: snapshot.hiresThisQuarter }}
           caption={`${snapshot.quarterLabel} to date · your candidates`}
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid items-stretch gap-4 lg:grid-cols-12">
+        <Card className="h-full lg:col-span-7">
           <CardHeader>
-            <CardTitle>In process</CardTitle>
+            <CardTitle>Your Pipeline</CardTitle>
             <CardAction>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/pipeline">
@@ -114,7 +108,7 @@ export default async function HomePage() {
               </Button>
             </CardAction>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {funnelTotal === 0 ? (
               <EmptyState
                 title="Nobody in process"
@@ -127,18 +121,18 @@ export default async function HomePage() {
                 }
               />
             ) : (
-              <ul className="space-y-2.5">
+              <ul className="flex flex-1 flex-col justify-center gap-3">
                 {snapshot.funnel.map(({ stage, count }) => (
                   <li key={stage}>
                     <Link href="/pipeline" className="group flex items-center gap-3 text-sm">
                       <span className="w-40 shrink-0 truncate text-muted-foreground group-hover:text-foreground">
                         {STAGE_LABELS[stage]}
                       </span>
-                      {/* Bars are relative to the busiest stage, so the shape
-                          of the funnel reads at a glance. */}
+                      {/* One accent for every stage — the number carries the
+                          difference, colour would only add noise. */}
                       <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                         <span
-                          className={`block h-full rounded-full ${TONE_BAR[stageTone(stage)]}`}
+                          className="block h-full rounded-full bg-primary"
                           style={{ width: `${Math.round((count / busiest) * 100)}%` }}
                         />
                       </span>
@@ -156,51 +150,61 @@ export default async function HomePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full lg:col-span-5">
           <CardHeader>
-            <CardTitle>Your interviews</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Your Interviews
+              {snapshot.scorecardsDueTotal > 0 && (
+                <span className="text-muted-foreground tabular-nums">
+                  · {snapshot.scorecardsDueTotal}
+                </span>
+              )}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <PlannedPanel needs="a scheduled date/time on Interview">
-              Upcoming interviews, ordered by when they happen. Interviews are already
-              assigned to a recruiter, but nothing records <em>when</em> one is scheduled.
-            </PlannedPanel>
-
+          {/* One scroll region for both sections, so Scorecards Due is always
+              what you see first and Upcoming never pushes it out of view. */}
+          <CardContent className={SCROLL_REGION}>
             {snapshot.openInterviews.length === 0 ? (
               <EmptyState
-                icon={CalendarClock}
-                title="No unsubmitted drafts"
+                icon={ClipboardCheck}
+                title="No scorecards due"
                 description="Interviews you've started but not submitted will appear here."
                 className="py-6"
               />
             ) : (
-              <div>
-                <p className="section-label mb-2">Drafts · started, not submitted</p>
-                <ul className="space-y-1.5">
-                  {snapshot.openInterviews.map((i) => (
-                    <li key={i.id}>
-                      <Link
-                        href={`/candidates/${i.candidateId}/interview/${i.id}`}
-                        className="block rounded-lg border border-border p-2.5 transition-colors hover:border-primary/50"
-                      >
-                        <span className="block truncate text-sm font-medium">
-                          {i.candidateName}
-                        </span>
-                        <span className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-                          <span className="truncate">
-                            {INTERVIEW_TYPE_LABELS[i.type as InterviewType]} ·{' '}
-                            {dateFormatter.format(i.createdAt)}
-                          </span>
-                          <span className="shrink-0 tabular-nums">{i.daysOpen}d open</span>
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+              <div className="space-y-1.5">
+                <p className="section-label sticky top-0 z-10 flex items-center gap-1.5 bg-card py-1 text-warning">
+                  <Clock className="size-3.5" />
+                  Scorecards Due · {snapshot.scorecardsDueTotal}
+                </p>
+                {snapshot.openInterviews.map((i) => (
+                  <Link
+                    key={i.id}
+                    href={`/candidates/${i.candidateId}/interview/${i.id}`}
+                    className="flex items-center gap-3 rounded-lg border border-warning-border bg-warning-soft/40 p-2.5 transition-colors hover:border-warning"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">
+                        {i.candidateName}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {INTERVIEW_TYPE_LABELS[i.type as InterviewType]}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right text-xs">
+                      <span className="block font-medium tabular-nums text-warning">
+                        {i.daysOpen}d overdue
+                      </span>
+                      <span className="block text-muted-foreground">
+                        {dateFormatter.format(i.createdAt)}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Oldest draft first.
+            <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
+              Upcoming interviews need a scheduled date on Interview — not recorded yet.
             </p>
           </CardContent>
         </Card>
@@ -208,55 +212,78 @@ export default async function HomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>No activity in over a week</CardTitle>
-          <CardAction>
-            {snapshot.stalledTotal > snapshot.stalled.length && (
-              <span className="text-xs text-muted-foreground">
-                showing {snapshot.stalled.length} of {snapshot.stalledTotal}
+          <CardTitle className="flex items-center gap-2">
+            Needs Attention
+            {snapshot.stalledTotal > 0 && (
+              <span className="text-muted-foreground tabular-nums">
+                · {snapshot.stalledTotal}
               </span>
             )}
+          </CardTitle>
+          <CardAction>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={inProcessHref}>
+                View all
+                <ArrowRight />
+              </Link>
+            </Button>
           </CardAction>
         </CardHeader>
         <CardContent>
           {snapshot.stalled.length === 0 ? (
             <EmptyState
               icon={Clock}
-              title="Nothing has gone quiet"
+              title="Nothing needs attention"
               description="Every candidate assigned to you has had a stage move, note, or email in the last week."
               className="py-8"
             />
           ) : (
-            <ul className="divide-y divide-border">
-              {snapshot.stalled.map((s) => (
-                <li key={s.candidateId + s.jobName}>
-                  <Link
-                    href={`/candidates/${s.candidateId}`}
-                    className="flex items-center gap-4 py-2.5 transition-colors hover:text-primary"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{s.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
+            <div className="max-h-[17rem] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border-strong text-left">
+                    {['Candidate', 'Job', 'Current Stage', 'Days Since Activity', 'Last Activity'].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="whitespace-nowrap py-2 pr-4 text-[11px] font-semibold uppercase tracking-[0.09em] text-muted-foreground"
+                        >
+                          {h}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.stalled.map((s) => (
+                    <tr key={s.candidateId + s.jobName} className="border-b border-border last:border-0">
+                      <td className="py-2.5 pr-4">
+                        <Link
+                          href={`/candidates/${s.candidateId}`}
+                          className="font-medium hover:text-primary hover:underline"
+                        >
+                          {s.name}
+                        </Link>
+                      </td>
+                      <td className="max-w-[16rem] truncate py-2.5 pr-4 text-muted-foreground">
                         {s.jobName}
-                      </span>
-                    </span>
-                    <Badge variant={stageTone(s.stage)}>{STAGE_LABELS[s.stage]}</Badge>
-                    <span className="w-56 shrink-0 text-right text-xs text-muted-foreground">
-                      <span className="block font-medium tabular-nums text-foreground">
-                        {s.daysQuiet}d quiet
-                      </span>
-                      <span className="block">
-                        last {ACTIVITY_LABEL[s.lastActivityKind]} ·{' '}
-                        {dateFormatter.format(s.lastActivityAt)}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <Badge variant={stageTone(s.stage)}>{STAGE_LABELS[s.stage]}</Badge>
+                      </td>
+                      <td className="py-2.5 pr-4 tabular-nums">{s.daysQuiet}d</td>
+                      <td className="whitespace-nowrap py-2.5 text-muted-foreground">
+                        <span className="block">{shortDate.format(s.lastActivityAt)}</span>
+                        <span className="block text-xs">
+                          {ACTIVITY_LABEL[s.lastActivityKind]}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-          <p className="mt-4 text-xs text-muted-foreground">
-            Activity counts a stage move, a note, or an email sent to the candidate.
-          </p>
         </CardContent>
       </Card>
     </div>

@@ -7,7 +7,7 @@ import type { PipelineStage } from '@prisma/client'
 
 const STALE_AFTER_DAYS = 7
 const STALLED_LIMIT = 12
-const INTERVIEW_LIMIT = 5
+const INTERVIEW_LIMIT = 25
 
 function daysAgo(n: number) {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000)
@@ -37,6 +37,7 @@ export type HomeSnapshot = {
     daysQuiet: number
   }[]
   stalledTotal: number
+  scorecardsDueTotal: number
   openInterviews: {
     id: string
     candidateId: string
@@ -172,6 +173,7 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
     })),
     stalled: stalledAll.slice(0, STALLED_LIMIT),
     stalledTotal: stalledAll.length,
+    scorecardsDueTotal: openInterviews.length,
     openInterviews: openInterviews.map((i) => ({
       id: i.id,
       candidateId: i.candidateId,
