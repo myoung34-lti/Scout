@@ -7,29 +7,34 @@ import type { PipelineStage } from '@prisma/client'
 
 const STALE_AFTER_DAYS = 7
 const STALLED_LIMIT = 8
-const INTERVIEW_LIMIT = 6
+const INTERVIEW_LIMIT = 5
 
 function daysAgo(n: number) {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000)
 }
 
+function quarterStart(d = new Date()) {
+  return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1)
+}
+
 export type HomeSnapshot = {
   userName: string | null
   userId: string
-  // "Assigned to me" throughout means Candidate.owner. The reporting layer's
-  // RECRUITER filter means *interviewer* for interview-based metrics, so these
-  // are computed here rather than reusing report definitions that would
-  // silently mean something different.
   inProcess: number
-  interviewed30d: { current: number; previous: number }
-  hired30d: { current: number; previous: number }
+  hiresThisQuarter: number
+  quarterLabel: string
+  // The funnel the dashboard leads with. Scoped by Candidate.owner because
+  // that is the only assignment Scout records today — it becomes "jobs I'm
+  // the recruiter on" once Job gains a recruiter field.
+  funnel: { stage: PipelineStage; count: number }[]
   stalled: {
     candidateId: string
     name: string
     jobName: string
     stage: PipelineStage
-    lastMovedAt: Date
-    daysStalled: number
+    lastActivityAt: Date
+    lastActivityKind: 'stage' | 'note' | 'email' | 'applied'
+    daysQuiet: number
   }[]
   stalledTotal: number
   openInterviews: {
@@ -44,96 +49,109 @@ export type HomeSnapshot = {
 export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   const authUser = await requireSession()
   const mine = { candidate: { ownerId: authUser.id } }
-  const start30 = daysAgo(30)
-  const start60 = daysAgo(60)
+  const qStart = quarterStart()
 
-  const [user, inProcess, intCur, intPrev, hiredCur, hiredPrev, activeApps, openInterviews] =
-    await Promise.all([
-      prisma.user.findUnique({ where: { id: authUser.id }, select: { name: true } }),
-      prisma.candidate.count({
-        where: { ownerId: authUser.id, applications: { some: { stage: { in: IN_PROCESS_STAGES } } } },
-      }),
-      prisma.interview.findMany({
-        where: { status: 'COMPLETED', completedAt: { gte: start30 }, ...mine },
-        select: { candidateId: true },
-      }),
-      prisma.interview.findMany({
-        where: {
-          status: 'COMPLETED',
-          completedAt: { gte: start60, lt: start30 },
-          ...mine,
-        },
-        select: { candidateId: true },
-      }),
-      prisma.application.findMany({
-        where: { hiredAt: { gte: start30 }, ...mine },
-        select: { candidateId: true },
-      }),
-      prisma.application.findMany({
-        where: { hiredAt: { gte: start60, lt: start30 }, ...mine },
-        select: { candidateId: true },
-      }),
-      prisma.application.findMany({
-        where: { stage: { in: IN_PROCESS_STAGES }, ...mine },
-        select: {
-          id: true,
-          stage: true,
-          appliedAt: true,
-          candidateId: true,
-          candidate: { select: { firstName: true, lastName: true } },
-          job: { select: { internalName: true } },
-        },
-      }),
-      prisma.interview.findMany({
-        where: { interviewerId: authUser.id, status: 'DRAFT' },
-        select: {
-          id: true,
-          type: true,
-          createdAt: true,
-          candidateId: true,
-          candidate: { select: { firstName: true, lastName: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: INTERVIEW_LIMIT,
-      }),
-    ])
+  const [user, activeApps, hires, openInterviews] = await Promise.all([
+    prisma.user.findUnique({ where: { id: authUser.id }, select: { name: true } }),
+    prisma.application.findMany({
+      where: { stage: { in: IN_PROCESS_STAGES }, ...mine },
+      select: {
+        id: true,
+        stage: true,
+        appliedAt: true,
+        candidateId: true,
+        candidate: { select: { firstName: true, lastName: true } },
+        job: { select: { internalName: true } },
+      },
+    }),
+    prisma.application.findMany({
+      where: { hiredAt: { gte: qStart }, ...mine },
+      select: { candidateId: true },
+    }),
+    prisma.interview.findMany({
+      where: { interviewerId: authUser.id, status: 'DRAFT' },
+      select: {
+        id: true,
+        type: true,
+        createdAt: true,
+        candidateId: true,
+        candidate: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: INTERVIEW_LIMIT,
+    }),
+  ])
 
-  // One grouped query for the latest stage change across all of my active
-  // applications, rather than a per-application lookup.
-  const lastMoves = await prisma.stageHistory.groupBy({
-    by: ['applicationId'],
-    where: { applicationId: { in: activeApps.map((a) => a.id) } },
-    _max: { changedAt: true },
-  })
-  const lastMoveByApp = new Map(lastMoves.map((m) => [m.applicationId, m._max.changedAt]))
+  const appIds = activeApps.map((a) => a.id)
+  const candidateIds = [...new Set(activeApps.map((a) => a.candidateId))]
+
+  // Activity is any of three signals, so all three are fetched as grouped
+  // maxima rather than per-candidate lookups.
+  const [moves, notes, emails] = await Promise.all([
+    prisma.stageHistory.groupBy({
+      by: ['applicationId'],
+      where: { applicationId: { in: appIds } },
+      _max: { changedAt: true },
+    }),
+    prisma.activityNote.groupBy({
+      by: ['candidateId'],
+      where: { candidateId: { in: candidateIds } },
+      _max: { createdAt: true },
+    }),
+    prisma.candidateEmail.groupBy({
+      by: ['candidateId'],
+      where: { candidateId: { in: candidateIds }, status: 'SENT' },
+      _max: { sentAt: true },
+    }),
+  ])
+
+  const moveBy = new Map(moves.map((m) => [m.applicationId, m._max.changedAt]))
+  const noteBy = new Map(notes.map((n) => [n.candidateId, n._max.createdAt]))
+  const emailBy = new Map(emails.map((e) => [e.candidateId, e._max.sentAt]))
   const cutoff = daysAgo(STALE_AFTER_DAYS)
 
   const stalledAll = activeApps
     .map((a) => {
-      // An application that has never moved is measured from when it was
-      // applied, otherwise it would look permanently fresh.
-      const lastMovedAt = lastMoveByApp.get(a.id) ?? a.appliedAt
+      const candidates: { at: Date | null; kind: 'stage' | 'note' | 'email' | 'applied' }[] = [
+        { at: moveBy.get(a.id) ?? null, kind: 'stage' },
+        { at: noteBy.get(a.candidateId) ?? null, kind: 'note' },
+        { at: emailBy.get(a.candidateId) ?? null, kind: 'email' },
+        // Never-touched applications fall back to when they applied, so they
+        // don't look permanently fresh.
+        { at: a.appliedAt, kind: 'applied' },
+      ]
+      const latest = candidates
+        .filter((c): c is { at: Date; kind: typeof c.kind } => c.at !== null)
+        .sort((x, y) => y.at.getTime() - x.at.getTime())[0]
+
       return {
         candidateId: a.candidateId,
         name: `${a.candidate.firstName} ${a.candidate.lastName}`,
         jobName: a.job.internalName,
         stage: a.stage,
-        lastMovedAt,
-        daysStalled: Math.floor((Date.now() - lastMovedAt.getTime()) / 86_400_000),
+        lastActivityAt: latest.at,
+        lastActivityKind: latest.kind,
+        daysQuiet: Math.floor((Date.now() - latest.at.getTime()) / 86_400_000),
       }
     })
-    .filter((a) => a.lastMovedAt < cutoff)
-    .sort((a, b) => a.lastMovedAt.getTime() - b.lastMovedAt.getTime())
+    .filter((a) => a.lastActivityAt < cutoff)
+    .sort((a, b) => a.lastActivityAt.getTime() - b.lastActivityAt.getTime())
 
-  const distinct = (rows: { candidateId: string }[]) =>
-    new Set(rows.map((r) => r.candidateId)).size
+  const countByStage = new Map<PipelineStage, number>()
+  for (const a of activeApps) {
+    countByStage.set(a.stage, (countByStage.get(a.stage) ?? 0) + 1)
+  }
 
   return {
     userName: user?.name ?? null,
     userId: authUser.id,
-    inProcess,
-    interviewed30d: { current: distinct(intCur), previous: distinct(intPrev) },
-    hired30d: { current: distinct(hiredCur), previous: distinct(hiredPrev) },
+    inProcess: new Set(activeApps.map((a) => a.candidateId)).size,
+    hiresThisQuarter: new Set(hires.map((h) => h.candidateId)).size,
+    quarterLabel: `Q${Math.floor(qStart.getMonth() / 3) + 1} ${qStart.getFullYear()}`,
+    funnel: IN_PROCESS_STAGES.map((stage) => ({
+      stage,
+      count: countByStage.get(stage) ?? 0,
+    })),
     stalled: stalledAll.slice(0, STALLED_LIMIT),
     stalledTotal: stalledAll.length,
     openInterviews: openInterviews.map((i) => ({
