@@ -6,7 +6,7 @@ import { IN_PROCESS_STAGES } from '@/lib/pipeline'
 import type { PipelineStage } from '@prisma/client'
 
 const STALE_AFTER_DAYS = 7
-const STALLED_LIMIT = 8
+const STALLED_LIMIT = 12
 const INTERVIEW_LIMIT = 5
 
 function daysAgo(n: number) {
@@ -27,7 +27,6 @@ export type HomeSnapshot = {
   // The funnel leads the dashboard: everyone in process on the jobs I'm the
   // recruiter for.
   funnel: { stage: PipelineStage; count: number }[]
-  jobsByRecruiter: { userId: string | null; name: string; open: number; inProcess: number }[]
   stalled: {
     candidateId: string
     name: string
@@ -57,7 +56,7 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   }
   const qStart = quarterStart()
 
-  const [user, jobsAssigned, funnelApps, allOpenJobs, activeApps, hires, openInterviews] =
+  const [user, jobsAssigned, funnelApps, activeApps, hires, openInterviews] =
     await Promise.all([
     prisma.user.findUnique({ where: { id: authUser.id }, select: { name: true } }),
     prisma.job.count({
@@ -69,17 +68,6 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
     prisma.application.findMany({
       where: { stage: { in: IN_PROCESS_STAGES }, ...myJobs },
       select: { stage: true, candidateId: true },
-    }),
-    prisma.job.findMany({
-      where: { status: { in: ['OPEN', 'ON_HOLD'] } },
-      select: {
-        id: true,
-        assignments: {
-          where: { role: 'RECRUITER' },
-          select: { userId: true, user: { select: { name: true } } },
-        },
-        _count: { select: { applications: { where: { stage: { in: IN_PROCESS_STAGES } } } } },
-      },
     }),
     prisma.application.findMany({
       where: { stage: { in: IN_PROCESS_STAGES }, ...mine },
@@ -170,26 +158,6 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
     countByStage.set(a.stage, (countByStage.get(a.stage) ?? 0) + 1)
   }
 
-  // Grouped in application code rather than SQL because the unassigned bucket
-  // has no row to group by.
-  const byRecruiter = new Map<string | null, { name: string; open: number; inProcess: number }>()
-  for (const j of allOpenJobs) {
-    // A job with several recruiters counts once for each of them — the panel
-    // answers "what is this person carrying", not "how do roles divide up".
-    const seats = j.assignments.length > 0 ? j.assignments : [null]
-    for (const seat of seats) {
-      const key = seat?.userId ?? null
-      const entry = byRecruiter.get(key) ?? {
-        name: seat?.user.name ?? 'Unassigned',
-        open: 0,
-        inProcess: 0,
-      }
-      entry.open += 1
-      entry.inProcess += j._count.applications
-      byRecruiter.set(key, entry)
-    }
-  }
-
   return {
     userName: user?.name ?? null,
     userId: authUser.id,
@@ -201,12 +169,6 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
       stage,
       count: countByStage.get(stage) ?? 0,
     })),
-    jobsByRecruiter: [...byRecruiter.entries()]
-      .map(([userId, v]) => ({ userId, ...v }))
-      // Unassigned last, otherwise busiest first.
-      .sort((a, b) =>
-        a.userId === null ? 1 : b.userId === null ? -1 : b.open - a.open
-      ),
     stalled: stalledAll.slice(0, STALLED_LIMIT),
     stalledTotal: stalledAll.length,
     openInterviews: openInterviews.map((i) => ({

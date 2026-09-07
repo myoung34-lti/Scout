@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, CalendarClock, Clock, UserPlus, Plus, UsersRound } from 'lucide-react'
+import { ArrowRight, CalendarClock, Clock, UserPlus, Plus } from 'lucide-react'
 import { getHomeSnapshot } from '@/lib/actions/home'
 import { STAGE_LABELS, stageTone, IN_PROCESS_STAGES } from '@/lib/pipeline'
 import type { StageTone } from '@/lib/pipeline'
@@ -167,11 +167,7 @@ export default async function HomePage() {
             </PlannedPanel>
 
             {snapshot.openInterviews.length === 0 ? (
-              <EmptyState
-                icon={CalendarClock}
-                title="No open interviews"
-                className="py-6"
-              />
+              <EmptyState icon={CalendarClock} title="No open interviews" className="py-6" />
             ) : (
               <div>
                 <p className="section-label mb-2">Assigned to you, not yet completed</p>
@@ -199,93 +195,59 @@ export default async function HomePage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>No activity in over a week</CardTitle>
-            <CardAction>
-              {snapshot.stalledTotal > snapshot.stalled.length && (
-                <span className="text-xs text-muted-foreground">
-                  showing {snapshot.stalled.length} of {snapshot.stalledTotal}
-                </span>
-              )}
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {snapshot.stalled.length === 0 ? (
-              <EmptyState
-                icon={Clock}
-                title="Nothing has gone quiet"
-                description="Every candidate assigned to you has had a stage move, note, or email in the last week."
-                className="py-8"
-              />
-            ) : (
-              <ul className="divide-y divide-border">
-                {snapshot.stalled.map((s) => (
-                  <li key={s.candidateId + s.jobName}>
-                    <Link
-                      href={`/candidates/${s.candidateId}`}
-                      className="flex items-center gap-3 py-2.5 transition-colors hover:text-primary"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{s.name}</span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {s.jobName}
-                        </span>
-                      </span>
-                      <Badge variant={stageTone(s.stage)}>{STAGE_LABELS[s.stage]}</Badge>
-                      <span className="w-28 shrink-0 text-right text-xs text-muted-foreground">
-                        <span className="block tabular-nums">{s.daysQuiet}d quiet</span>
-                        <span className="block">last: {ACTIVITY_LABEL[s.lastActivityKind]}</span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+      <Card>
+        <CardHeader>
+          <CardTitle>No activity in over a week</CardTitle>
+          <CardAction>
+            {snapshot.stalledTotal > snapshot.stalled.length && (
+              <span className="text-xs text-muted-foreground">
+                showing {snapshot.stalled.length} of {snapshot.stalledTotal}
+              </span>
             )}
-            <p className="mt-4 text-xs text-muted-foreground">
-              Activity counts a stage move, a note, or an email sent to the candidate.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Jobs by recruiter</CardTitle>
-            <CardAction>
-              <UsersRound className="size-4 text-muted-foreground" />
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {snapshot.jobsByRecruiter.length === 0 ? (
-              <EmptyState icon={UsersRound} title="No open roles" className="py-6" />
-            ) : (
-              <ul className="space-y-1.5">
-                {snapshot.jobsByRecruiter.map((r) => (
-                  <li
-                    key={r.userId ?? 'unassigned'}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border p-2.5"
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {snapshot.stalled.length === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title="Nothing has gone quiet"
+              description="Every candidate assigned to you has had a stage move, note, or email in the last week."
+              className="py-8"
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {snapshot.stalled.map((s) => (
+                <li key={s.candidateId + s.jobName}>
+                  <Link
+                    href={`/candidates/${s.candidateId}`}
+                    className="flex items-center gap-4 py-2.5 transition-colors hover:text-primary"
                   >
-                    <span
-                      className={`min-w-0 truncate text-sm ${
-                        r.userId ? 'font-medium' : 'text-muted-foreground italic'
-                      }`}
-                    >
-                      {r.name}
-                    </span>
-                    <span className="shrink-0 text-right text-xs text-muted-foreground">
-                      <span className="block tabular-nums">
-                        {r.open} {r.open === 1 ? 'role' : 'roles'}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{s.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {s.jobName}
                       </span>
-                      <span className="block tabular-nums">{r.inProcess} in process</span>
                     </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                    <Badge variant={stageTone(s.stage)}>{STAGE_LABELS[s.stage]}</Badge>
+                    <span className="w-56 shrink-0 text-right text-xs text-muted-foreground">
+                      <span className="block font-medium tabular-nums text-foreground">
+                        {s.daysQuiet}d quiet
+                      </span>
+                      <span className="block">
+                        last {ACTIVITY_LABEL[s.lastActivityKind]} ·{' '}
+                        {dateFormatter.format(s.lastActivityAt)}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-4 text-xs text-muted-foreground">
+            Activity counts a stage move, a note, or an email sent to the candidate.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   )
 }
