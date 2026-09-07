@@ -48,6 +48,7 @@ export type CandidateRow = {
   recruiter: string | null
   tags: string[]
   composeTarget: ComposeEmailTarget
+  currentApplication: { id: string; jobName: string } | null
 }
 
 function initials(first: string, last: string) {
@@ -169,6 +170,7 @@ export function CandidatesTable({
                   inTalentPool={c.inTalentPool}
                   jobs={jobs}
                   composeTarget={c.composeTarget}
+                  currentApplication={c.currentApplication}
                 />
               </TableCell>
             </TableRow>

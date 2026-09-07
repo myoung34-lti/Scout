@@ -3,6 +3,7 @@ import { STAGE_LABELS, rejectionReasonText } from '@/lib/pipeline'
 import { INTERVIEW_TYPE_LABELS, RECOMMENDATION_LABELS } from '@/lib/interview'
 import { CANDIDATE_SOURCE_LABELS } from '@/lib/candidate-source'
 import { resolveDateRange, defaultTimeGrouping } from '@/lib/reporting/date-range'
+import { NOT_DELETED, VISIBLE_APPLICATION, CANDIDATE_VISIBLE } from '@/lib/candidate-visibility'
 import { bucketKeyAndLabel } from '@/lib/reporting/time-bucket'
 import { METRIC_LABELS } from '@/lib/reporting/report-catalog'
 import type { ReportDefinition, ReportFilter, ReportResult, Metric } from '@/lib/reporting/report-schema'
@@ -65,7 +66,8 @@ const TOTAL_ROW = { key: 'TOTAL', label: 'Total' }
 // (AND-only, per the approved plan) rather than several conflicting ones.
 
 function buildCandidateFilterWhere(filters: ReportFilter[]): Prisma.CandidateWhereInput {
-  const where: Prisma.CandidateWhereInput = {}
+  // Seeded so no metric can count a soft-deleted candidate.
+  const where: Prisma.CandidateWhereInput = { ...NOT_DELETED }
   const applicationConds: Prisma.ApplicationWhereInput = {}
   const interviewConds: Prisma.InterviewWhereInput = {}
   let hasApplicationCond = false
@@ -122,13 +124,13 @@ function buildCandidateFilterWhere(filters: ReportFilter[]): Prisma.CandidateWhe
     }
   }
 
-  if (hasApplicationCond) where.applications = { some: applicationConds }
+  if (hasApplicationCond) where.applications = { some: { ...applicationConds, removedAt: null } }
   if (hasInterviewCond) where.interviews = { some: interviewConds }
   return where
 }
 
 function buildInterviewFilterWhere(filters: ReportFilter[]): Prisma.InterviewWhereInput {
-  const where: Prisma.InterviewWhereInput = {}
+  const where: Prisma.InterviewWhereInput = { ...CANDIDATE_VISIBLE }
   const candidateConds: Prisma.CandidateWhereInput = {}
   const applicationConds: Prisma.ApplicationWhereInput = {}
   let hasCandidateCond = false
@@ -188,13 +190,13 @@ function buildInterviewFilterWhere(filters: ReportFilter[]): Prisma.InterviewWhe
     }
   }
 
-  if (hasApplicationCond) where.application = { is: applicationConds }
-  if (hasCandidateCond) where.candidate = { is: candidateConds }
+  if (hasApplicationCond) where.application = { is: { ...applicationConds, removedAt: null } }
+  if (hasCandidateCond) where.candidate = { is: { ...candidateConds, deletedAt: null } }
   return where
 }
 
 function buildApplicationFilterWhere(filters: ReportFilter[]): Prisma.ApplicationWhereInput {
-  const where: Prisma.ApplicationWhereInput = {}
+  const where: Prisma.ApplicationWhereInput = { ...VISIBLE_APPLICATION }
   const candidateConds: Prisma.CandidateWhereInput = {}
   let hasCandidateCond = false
 
@@ -251,7 +253,7 @@ function buildApplicationFilterWhere(filters: ReportFilter[]): Prisma.Applicatio
     }
   }
 
-  if (hasCandidateCond) where.candidate = { is: candidateConds }
+  if (hasCandidateCond) where.candidate = { is: { ...candidateConds, deletedAt: null } }
   return where
 }
 
@@ -266,7 +268,7 @@ function buildJobFilterWhere(filters: ReportFilter[]): Prisma.JobWhereInput {
 }
 
 function buildStageHistoryFilterWhere(filters: ReportFilter[]): Prisma.StageHistoryWhereInput {
-  const where: Prisma.StageHistoryWhereInput = {}
+  const where: Prisma.StageHistoryWhereInput = { application: VISIBLE_APPLICATION }
   const applicationConds: Prisma.ApplicationWhereInput = {}
   let hasApplicationCond = false
 
@@ -290,7 +292,7 @@ function buildStageHistoryFilterWhere(filters: ReportFilter[]): Prisma.StageHist
         break // RATING/LOCATION/TAG/TALENT_POOL/SOURCE/INTERVIEW_* not meaningful for pipeline movement
     }
   }
-  if (hasApplicationCond) where.application = { is: applicationConds }
+  if (hasApplicationCond) where.application = { is: { ...applicationConds, ...VISIBLE_APPLICATION } }
   return where
 }
 

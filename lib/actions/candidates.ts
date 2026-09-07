@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
+import { NOT_DELETED, RETENTION_DAYS } from '@/lib/candidate-visibility'
 import { candidateSchema, candidateEditSchema } from '@/lib/validation/candidate'
 import { createApplication } from '@/lib/actions/applications'
 import { uploadResumeForCandidate } from '@/lib/actions/resumes'
@@ -13,6 +14,7 @@ import type { PipelineStage, Prisma } from '@prisma/client'
 export async function listCandidates() {
   await requireSession()
   return prisma.candidate.findMany({
+    where: NOT_DELETED,
     orderBy: { createdAt: 'desc' },
     include: {
       applications: { include: { job: true } },
@@ -277,7 +279,7 @@ export async function checkDuplicateByEmail(email: string) {
   if (!trimmed) return null
 
   return prisma.candidate.findFirst({
-    where: { email: { equals: trimmed, mode: 'insensitive' } },
+    where: { ...NOT_DELETED, email: { equals: trimmed, mode: 'insensitive' } },
     select: { firstName: true, lastName: true, email: true },
   })
 }
@@ -395,4 +397,74 @@ export async function createCandidate(
     revalidatePath(`/jobs/${jobId}`)
   }
   redirect(`/candidates/${candidate.id}`)
+}
+
+// --- soft delete -----------------------------------------------------------
+
+// Keeps the row and every child record, so restoring is one field write
+// rather than rebuilding applications, interviews, notes and emails from a
+// snapshot. Everything that lists candidates filters on deletedAt — see
+// lib/candidate-visibility.ts.
+export async function deleteCandidate(candidateId: string) {
+  const user = await requireSession()
+
+  await prisma.candidate.update({
+    where: { id: candidateId },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  })
+
+  revalidatePath('/candidates')
+  revalidatePath('/candidates/deleted')
+}
+
+export async function restoreCandidate(candidateId: string) {
+  await requireSession()
+
+  await prisma.candidate.update({
+    where: { id: candidateId },
+    data: { deletedAt: null, deletedById: null },
+  })
+
+  revalidatePath('/candidates')
+  revalidatePath('/candidates/deleted')
+}
+
+export async function listDeletedCandidates() {
+  await requireSession()
+
+  const rows = await prisma.candidate.findMany({
+    where: { NOT: { deletedAt: null } },
+    include: {
+      deletedBy: { select: { name: true } },
+      _count: { select: { applications: true, interviews: true, notes: true } },
+    },
+    orderBy: { deletedAt: 'desc' },
+  })
+
+  return rows.map((c) => ({
+    id: c.id,
+    name: `${c.firstName} ${c.lastName}`,
+    subtitle:
+      [c.currentTitle, c.currentCompany].filter(Boolean).join(' · ') || c.email || null,
+    deletedAt: c.deletedAt!,
+    deletedByName: c.deletedBy?.name ?? null,
+    daysLeft: RETENTION_DAYS - Math.floor((Date.now() - c.deletedAt!.getTime()) / 86_400_000),
+    counts: c._count,
+  }))
+}
+
+// Detaches the candidate from a job's pipeline without destroying the
+// application, its stage history, or the interviews and emails tied to it.
+export async function removeFromJob(applicationId: string) {
+  await requireSession()
+
+  const application = await prisma.application.update({
+    where: { id: applicationId },
+    data: { removedAt: new Date() },
+    select: { candidateId: true, jobId: true },
+  })
+
+  revalidatePath(`/candidates/${application.candidateId}`)
+  revalidatePath(`/jobs/${application.jobId}`)
+  revalidatePath('/pipeline')
 }

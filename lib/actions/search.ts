@@ -10,6 +10,7 @@ import type {
 } from '@/lib/candidate-search'
 import type { PipelineStage, Prisma } from '@prisma/client'
 import { ACTIVE_STAGES, FORMAL_INTERVIEW_STAGES } from '@/lib/pipeline'
+import { NOT_DELETED } from '@/lib/candidate-visibility'
 
 export type CandidateSearchFilters = {
   query?: string
@@ -144,7 +145,8 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
     bucketCondition,
   ]
 
-  const where = { AND: andConditions }
+  // Soft-deleted candidates never appear in search or its counts.
+  const where = { ...NOT_DELETED, AND: andConditions }
 
   const [candidates, totalCount] = await Promise.all([
     prisma.candidate.findMany({
@@ -168,10 +170,10 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
 // tab itself filters by, so the number and the resulting list always agree.
 const STATUS_WHERE: Record<CandidateStatusKey, Prisma.CandidateWhereInput> = {
   all: {},
-  active: { applications: { some: { stage: { in: ACTIVE_STAGES } } } },
-  interviewing: { applications: { some: { stage: { in: FORMAL_INTERVIEW_STAGES } } } },
-  hired: { applications: { some: { stage: 'HIRED' } } },
-  rejected: { applications: { some: { stage: 'REJECTED' } } },
+  active: { applications: { some: { removedAt: null, stage: { in: ACTIVE_STAGES } } } },
+  interviewing: { applications: { some: { removedAt: null, stage: { in: FORMAL_INTERVIEW_STAGES } } } },
+  hired: { applications: { some: { removedAt: null, stage: 'HIRED' } } },
+  rejected: { applications: { some: { removedAt: null, stage: 'REJECTED' } } },
   pool: { inTalentPool: true },
 }
 
@@ -180,7 +182,7 @@ export async function getCandidateStatusCounts(): Promise<Record<CandidateStatus
 
   const keys = [...CANDIDATE_STATUS_KEYS]
   const counts = await Promise.all(
-    keys.map((k) => prisma.candidate.count({ where: STATUS_WHERE[k] }))
+    keys.map((k) => prisma.candidate.count({ where: { ...NOT_DELETED, ...STATUS_WHERE[k] } }))
   )
   return Object.fromEntries(keys.map((k, i) => [k, counts[i]])) as Record<
     CandidateStatusKey,

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
+import { VISIBLE_APPLICATION } from '@/lib/candidate-visibility'
 import { jobSchema } from '@/lib/validation/job'
 import { CANONICAL_JOB_LOCATIONS } from '@/lib/job-locations'
 import type { JobStatus } from '@prisma/client'
@@ -33,7 +34,7 @@ export async function listJobs(
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      _count: { select: { applications: true } },
+      _count: { select: { applications: { where: VISIBLE_APPLICATION } } },
       assignments: { include: { user: { select: { id: true, name: true } } } },
     },
   })
@@ -46,7 +47,7 @@ export async function countHiresByJob(): Promise<Record<string, number>> {
   await requireSession()
   const grouped = await prisma.application.groupBy({
     by: ['jobId'],
-    where: { stage: 'HIRED' },
+    where: { stage: 'HIRED', ...VISIBLE_APPLICATION },
     _count: { _all: true },
   })
   return Object.fromEntries(grouped.map((g) => [g.jobId, g._count._all]))

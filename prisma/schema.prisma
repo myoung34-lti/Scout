@@ -108,6 +108,7 @@ model User {
   askScoutMessages             AskScoutMessage[]
   savedReports                 SavedReport[]
   jobAssignments               JobAssignment[]
+  deletedCandidates            Candidate[]            @relation("CandidateDeletedBy")
 }
 
 model Job {
@@ -189,9 +190,16 @@ model Candidate {
   emails                CandidateEmail[]
   insight               CandidateInsight?
   askScoutMessages      AskScoutMessage[]
+  // Soft delete. A deleted candidate keeps every application, interview,
+  // note and email so restoring is a single field write — nothing is
+  // reconstructed from a snapshot.
+  deletedAt             DateTime?
+  deletedById           String?           @db.Uuid
+  deletedBy             User?             @relation("CandidateDeletedBy", fields: [deletedById], references: [id])
 
   @@index([email])
   @@index([inTalentPool])
+  @@index([deletedAt])
   @@index([createdAt])
 }
 
@@ -290,6 +298,10 @@ model Application {
   candidate               Candidate        @relation(fields: [candidateId], references: [id])
   job                     Job              @relation(fields: [jobId], references: [id])
   history                 StageHistory[]
+  // "Removed from job": the candidate leaves this job's pipeline but the
+  // application and its history are kept, so it stays visible on the
+  // profile and the removal is reversible.
+  removedAt               DateTime?
   notes                   ActivityNote[]
   interviews              Interview[]
   emails                  CandidateEmail[]
@@ -300,6 +312,7 @@ model Application {
   @@index([hiredAt])
   @@index([rejectedAt])
   @@index([appliedAt])
+  @@index([removedAt])
 }
 
 model StageHistory {

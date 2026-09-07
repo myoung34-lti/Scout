@@ -3,13 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
+import { VISIBLE_APPLICATION } from '@/lib/candidate-visibility'
 import { STAGE_LABELS, rejectionReasonText } from '@/lib/pipeline'
 import type { PipelineStage, RejectionReason } from '@prisma/client'
 
 export async function getBoardApplications(jobId: string) {
   await requireSession()
   return prisma.application.findMany({
-    where: { jobId },
+    where: { jobId, ...VISIBLE_APPLICATION },
     include: { candidate: true, job: true },
     orderBy: { createdAt: 'asc' },
   })
@@ -21,7 +22,7 @@ export async function getBoardApplications(jobId: string) {
 export async function getAllBoardApplications() {
   await requireSession()
   return prisma.application.findMany({
-    where: { job: { status: { in: ['OPEN', 'ON_HOLD'] } } },
+    where: { job: { status: { in: ['OPEN', 'ON_HOLD'] } }, ...VISIBLE_APPLICATION },
     include: { candidate: true, job: true },
     orderBy: { createdAt: 'asc' },
   })

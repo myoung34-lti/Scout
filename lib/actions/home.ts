@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
 import { IN_PROCESS_STAGES } from '@/lib/pipeline'
+import { VISIBLE_APPLICATION, CANDIDATE_VISIBLE } from '@/lib/candidate-visibility'
 import type { PipelineStage } from '@prisma/client'
 
 const STALE_AFTER_DAYS = 7
@@ -50,11 +51,12 @@ export type HomeSnapshot = {
 
 export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   const authUser = await requireSession()
-  const mine = { candidate: { ownerId: authUser.id } }
+  const mine = { candidate: { ownerId: authUser.id, deletedAt: null }, removedAt: null }
   // The funnel and the Jobs Assigned count follow job assignment; the quiet
   // list and hires follow candidate ownership. Two different questions.
   const myJobs = {
     job: { assignments: { some: { userId: authUser.id, role: 'RECRUITER' as const } } },
+    ...VISIBLE_APPLICATION,
   }
   const qStart = quarterStart()
 
@@ -87,7 +89,7 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
       select: { candidateId: true },
     }),
     prisma.interview.findMany({
-      where: { interviewerId: authUser.id, status: 'DRAFT' },
+      where: { interviewerId: authUser.id, status: 'DRAFT', ...CANDIDATE_VISIBLE },
       select: {
         id: true,
         type: true,

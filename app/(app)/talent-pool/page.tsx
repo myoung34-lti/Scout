@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
+import { NOT_DELETED } from '@/lib/candidate-visibility'
 import { listJobs } from '@/lib/actions/jobs'
 import { TERMINAL_STAGES } from '@/lib/pipeline'
 import { getCandidateDisplayTitle } from '@/lib/candidate-type'
@@ -35,6 +36,7 @@ export default async function TalentPoolPage({
   const [candidates, allJobs] = await Promise.all([
     prisma.candidate.findMany({
       where: {
+        ...NOT_DELETED,
         inTalentPool: true,
         ...(query
           ? {

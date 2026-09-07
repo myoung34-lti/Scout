@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Users } from 'lucide-react'
+import { Plus, Users, Trash2 } from 'lucide-react'
 import { searchCandidates, getCandidateStatusCounts } from '@/lib/actions/search'
 import {
   CANDIDATES_PAGE_SIZE,
@@ -121,6 +121,7 @@ export default async function CandidatesPage({
     // from the list renders the same job variables as one sent from the
     // candidate's own page.
     const relevant = findRelevantApplication(c)
+    const current = findCurrentApplication(c)
     return {
     id: c.id,
     firstName: c.firstName,
@@ -132,7 +133,7 @@ export default async function CandidatesPage({
     createdAt: dateFormatter.format(c.createdAt),
     displayTitle: getCandidateDisplayTitle(c) ?? null,
     currentCompany: c.currentCompany,
-    stage: findCurrentApplication(c)?.stage ?? null,
+    stage: current?.stage ?? null,
     recruiter: c.owner?.name ?? null,
     tags: c.tags.map((ct) => ct.tag.displayLabel),
     composeTarget: {
@@ -146,6 +147,9 @@ export default async function CandidatesPage({
       jobLocation: relevant?.job.location ?? '',
       applicationId: relevant?.id ?? null,
     },
+    currentApplication: current
+      ? { id: current.id, jobName: current.job.internalName }
+      : null,
     }
   })
 
@@ -164,12 +168,20 @@ export default async function CandidatesPage({
             Find, track, and engage top talent.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/candidates/new">
-            <Plus />
-            Add Candidate
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/candidates/deleted">
+              <Trash2 />
+              Deleted
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/candidates/new">
+              <Plus />
+              Add Candidate
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <CandidateStatusTabs counts={counts} />

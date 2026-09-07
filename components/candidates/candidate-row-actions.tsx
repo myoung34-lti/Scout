@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreHorizontal, UserRound, Briefcase, Bookmark, BookmarkX, Mail } from 'lucide-react'
+import { MoreHorizontal, UserRound, Briefcase, Bookmark, BookmarkX, Mail, Trash2, BriefcaseBusiness } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   addCandidateToJob,
   addCandidateToTalentPool,
   removeCandidateFromTalentPool,
+  removeFromJob,
 } from '@/lib/actions/candidates'
+import { DeleteCandidateDialog } from '@/components/candidates/delete-candidate-dialog'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,16 +43,19 @@ export function CandidateRowActions({
   inTalentPool,
   jobs,
   composeTarget,
+  currentApplication,
 }: {
   candidateId: string
   candidateName: string
   inTalentPool: boolean
   jobs: { id: string; internalName: string }[]
   composeTarget: ComposeEmailTarget
+  currentApplication: { id: string; jobName: string } | null
 }) {
   const router = useRouter()
   const { openComposeEmail } = useComposeEmail()
   const [jobDialogOpen, setJobDialogOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [jobId, setJobId] = useState<string | undefined>()
   const [pending, startTransition] = useTransition()
 
@@ -67,6 +72,21 @@ export function CandidateRowActions({
         router.refresh()
       } catch {
         toast.error("That didn't save. Please try again.")
+      }
+    })
+  }
+
+  function detachFromJob() {
+    if (!currentApplication) return
+    startTransition(async () => {
+      try {
+        await removeFromJob(currentApplication.id)
+        toast.success(`Removed ${candidateName} from ${currentApplication.jobName}.`, {
+          description: 'Their history on that job is kept.',
+        })
+        router.refresh()
+      } catch {
+        toast.error("Couldn't remove them from that job. Please try again.")
       }
     })
   }
@@ -114,13 +134,31 @@ export function CandidateRowActions({
             <Briefcase className="size-4" />
             Add to job
           </DropdownMenuItem>
+          {currentApplication && (
+            <DropdownMenuItem onSelect={detachFromJob} disabled={pending}>
+              <BriefcaseBusiness className="size-4" />
+              Remove from {currentApplication.jobName}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={togglePool} disabled={pending}>
             {inTalentPool ? <BookmarkX className="size-4" /> : <Bookmark className="size-4" />}
             {inTalentPool ? 'Remove from talent pool' : 'Add to talent pool'}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+            <Trash2 className="size-4" />
+            Delete candidate
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <DeleteCandidateDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        candidateId={candidateId}
+        candidateName={candidateName}
+      />
 
       <Dialog open={jobDialogOpen} onOpenChange={setJobDialogOpen}>
         <DialogContent>
