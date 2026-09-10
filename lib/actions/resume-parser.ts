@@ -26,6 +26,7 @@ export type ParsedResumeFields = {
   phone?: string
   linkedinUrl?: string
   currentCompany?: string
+  currentTitle?: string
   location?: string
   skills?: string[]
   workHistory?: WorkHistoryEntry[]
@@ -116,6 +117,10 @@ export async function parseResumeFromBytes(
               currentCompany: {
                 type: 'string',
                 description: 'Their current or most recent employer.',
+              },
+              currentTitle: {
+                type: 'string',
+                description: 'Their current or most recent job title.',
               },
               location: {
                 type: 'string',

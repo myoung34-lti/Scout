@@ -5,7 +5,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getCandidate } from '@/lib/actions/candidates'
 import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText, stageTone } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
-import { ResumeUploader } from '@/components/candidates/resume-uploader'
+import { ResumeSection } from '@/components/candidates/resume-section'
 import { CandidateRating } from '@/components/candidates/candidate-rating'
 import { ActivityFeed } from '@/components/candidates/activity-feed'
 import { AskScoutCard } from '@/components/candidates/ask-scout-card'
@@ -65,10 +65,6 @@ function stageOutcomesFor(
   return outcomes
 }
 
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
 const shortDateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' })
 
 export default async function CandidateProfilePage({
@@ -353,29 +349,14 @@ export default async function CandidateProfilePage({
               <FileText className="size-4" />
               Resumes
             </h2>
-            {candidate.resumes.length > 0 && (
-              <ul className="mb-3 space-y-2">
-                {candidate.resumes.map((resume) => (
-                  <li
-                    key={resume.id}
-                    className="flex items-center justify-between gap-2 text-sm"
-                  >
-                    <a
-                      href={`/api/resumes/${resume.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate hover:underline"
-                    >
-                      {resume.fileName}
-                    </a>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {dateFormatter.format(resume.uploadedAt)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <ResumeUploader candidateId={candidate.id} />
+            <ResumeSection
+              candidateId={candidate.id}
+              resumes={candidate.resumes.map((r) => ({
+                id: r.id,
+                fileName: r.fileName,
+                uploadedAt: r.uploadedAt,
+              }))}
+            />
           </div>
 
           <div className="rounded-xl border border-border bg-card shadow-xs p-4">

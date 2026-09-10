@@ -23,6 +23,15 @@ export async function saveResumeFile(
   return storagePath
 }
 
+// Genuinely removes the object rather than orphaning it. A resume attached
+// to the wrong candidate is somebody else's personal data sitting on the
+// wrong record, so "remove" has to mean the file is gone, not hidden.
+export async function deleteResumeFile(storagePath: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.storage.from(BUCKET).remove([storagePath])
+  if (error) throw error
+}
+
 export async function readResumeFile(storagePath: string) {
   const supabase = await createClient()
   const { data, error } = await supabase.storage

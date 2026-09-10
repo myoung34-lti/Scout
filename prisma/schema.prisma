@@ -276,6 +276,13 @@ model Resume {
   uploadedAt             DateTime  @default(now())
   uploadedById           String    @db.Uuid
   greenhouseAttachmentId BigInt?   @unique
+  // What the resume scan extracted, as ParsedResumeFields (see
+  // lib/actions/resume-parser.ts). Persisted so the overwrite-preview
+  // dialog and the apply step share one parse instead of calling Claude
+  // twice, and so it stays visible later which resume produced which
+  // values. Null for the Greenhouse-imported resumes, which were never
+  // scanned.
+  parsedFields           Json?
   candidate              Candidate @relation(fields: [candidateId], references: [id])
   uploadedBy             User      @relation(fields: [uploadedById], references: [id])
 

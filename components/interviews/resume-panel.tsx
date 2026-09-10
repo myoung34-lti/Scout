@@ -1,6 +1,6 @@
 import { FileText, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ResumeUploader } from '@/components/candidates/resume-uploader'
+import { ResumeSection } from '@/components/candidates/resume-section'
 
 export function ResumePanel({
   candidateId,
@@ -16,7 +16,7 @@ export function ResumePanel({
         <p className="text-sm text-muted-foreground">
           No resume on file for this candidate.
         </p>
-        <ResumeUploader candidateId={candidateId} />
+        <ResumeSection candidateId={candidateId} resumes={[]} />
       </div>
     )
   }
