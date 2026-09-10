@@ -12,10 +12,17 @@ import type { WorkHistoryEntry } from '@/lib/actions/resume-parser'
 // notes (see lib/activity-note.ts), and cap everything so a candidate with
 // a long history never blows up the prompt. All limits are soft — they
 // trim, they don't error.
+//
+// The two interview text fields get different caps because they are
+// different kinds of writing: recruiter notes are hand-typed and short,
+// while a Fireflies call summary is machine-generated and routinely runs
+// past 4k characters. Capping both at the recruiter-notes length silently
+// halved every real call summary.
 const MAX_NOTES = 15
 const MAX_NOTE_CHARS = 2000
-const MAX_INTERVIEW_SUMMARY_CHARS = 2000
-const MAX_CONTEXT_CHARS = 12000
+const MAX_RECRUITER_NOTE_CHARS = 2000
+const MAX_CALL_SUMMARY_CHARS = 6000
+const MAX_CONTEXT_CHARS = 40000
 
 export type CandidateContext = {
   candidate: {
@@ -42,7 +49,12 @@ export type CandidateContext = {
     type: string
     status: string
     recommendation: string | null
-    summary: string | null
+    recommendationNotes: string | null
+    compensationNotes: string | null
+    // Kept as two distinct fields, never collapsed: an interview commonly
+    // has both, and they say different things.
+    recruiterNotes: string | null
+    callSummary: string | null
     date: string
   }[]
   notes: { body: string; date: string }[]
@@ -53,6 +65,16 @@ function truncate(text: string | null | undefined, maxChars: number): string | n
   if (!text) return null
   if (text.length <= maxChars) return text
   return `${text.slice(0, maxChars)}…`
+}
+
+// Interview notes and call summaries are multi-line. Without this, their
+// second and later lines sit flush against the interview list and read as
+// separate top-level facts rather than as that interview's content.
+function indent(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => `    ${line}`)
+    .join('\n')
 }
 
 // One query, scoped strictly to this candidateId — the only place candidate
@@ -92,9 +114,16 @@ export async function buildCandidateContext(candidateId: string): Promise<Candid
     type: INTERVIEW_TYPE_LABELS[iv.type],
     status: iv.status === 'DRAFT' ? 'In Progress' : 'Completed',
     recommendation: iv.recommendation ? RECOMMENDATION_LABELS[iv.recommendation] : null,
-    // Same precedence convention as the Activity Feed: a human-written note
-    // beats the Fireflies auto-summary when both exist.
-    summary: truncate(iv.notes || iv.firefliesSummary, MAX_INTERVIEW_SUMMARY_CHARS),
+    recommendationNotes: iv.recommendationNotes?.trim() || null,
+    compensationNotes: iv.compensationNotes?.trim() || null,
+    // This deliberately does NOT follow the Activity Feed's `notes ||
+    // firefliesSummary` precedence. There it is a display choice — one row,
+    // one preview, so one has to win. A prompt has no such constraint, and
+    // picking one discarded the other outright: a candidate with four lines
+    // of typed notes and a 4k-character call summary reached the model with
+    // only the four lines.
+    recruiterNotes: truncate(iv.notes?.trim() || null, MAX_RECRUITER_NOTE_CHARS),
+    callSummary: truncate(iv.firefliesSummary?.trim() || null, MAX_CALL_SUMMARY_CHARS),
     date: iv.createdAt.toISOString(),
   }))
 
@@ -170,8 +199,27 @@ export function formatCandidateContextForPrompt(context: CandidateContext): stri
     lines.push('', 'Interviews:')
     for (const iv of context.interviews) {
       const recommendation = iv.recommendation ? ` — recommendation: ${iv.recommendation}` : ''
-      const summary = iv.summary ? `: ${iv.summary}` : ' (no summary recorded)'
-      lines.push(`- ${iv.type} (${iv.status})${recommendation}${summary}`)
+      lines.push(`- ${iv.type} (${iv.status})${recommendation}`)
+
+      // Each source is labelled for what it is so the model can weight them:
+      // the recruiter's own words carry more authority than an automated
+      // transcript summary, and compensation has a dedicated field on the
+      // interview rather than living in prose.
+      if (iv.recommendationNotes) {
+        lines.push(`  Interviewer's reasoning: ${iv.recommendationNotes}`)
+      }
+      if (iv.compensationNotes) {
+        lines.push(`  Compensation discussed: ${iv.compensationNotes}`)
+      }
+      if (iv.recruiterNotes) {
+        lines.push(`  Recruiter's interview notes:`, indent(iv.recruiterNotes))
+      }
+      if (iv.callSummary) {
+        lines.push(`  Automated call summary (Fireflies):`, indent(iv.callSummary))
+      }
+      if (!iv.recruiterNotes && !iv.callSummary) {
+        lines.push('  (no notes or call summary recorded)')
+      }
     }
   }
 
