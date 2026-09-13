@@ -2,7 +2,12 @@
 
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
-import { CANDIDATES_PAGE_SIZE, CANDIDATE_STATUS_KEYS } from '@/lib/candidate-search'
+import {
+  CANDIDATES_PAGE_SIZE,
+  CANDIDATE_STATUS_KEYS,
+  DEFAULT_CANDIDATE_SORT,
+} from '@/lib/candidate-search'
+import { getLastActivityMap } from '@/lib/candidate-activity'
 import type {
   AddedDatePreset,
   CandidateSort,
@@ -33,7 +38,10 @@ export type CandidateSearchFilters = {
 
 // Sorting is chosen from a fixed map rather than built from the raw param, so
 // a crafted `sort` value can never reach Prisma as a field name.
-const SORT_ORDER: Record<CandidateSort, Prisma.CandidateOrderByWithRelationInput[]> = {
+const SORT_ORDER: Record<
+  Exclude<CandidateSort, 'activity'>,
+  Prisma.CandidateOrderByWithRelationInput[]
+> = {
   added: [{ createdAt: 'desc' }],
   name: [{ firstName: 'asc' }, { lastName: 'asc' }],
   // Unrated candidates sort last either way rather than leading the list.
@@ -58,7 +66,7 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
     addedTo,
     recruiterId,
     status,
-    sort = 'added',
+    sort = DEFAULT_CANDIDATE_SORT,
     page = 1,
   } = filters
   const hasStages = stages && stages.length > 0
@@ -148,14 +156,41 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
   // Soft-deleted candidates never appear in search or its counts.
   const where = { ...NOT_DELETED, AND: andConditions }
 
+  const include = {
+    applications: { include: { job: true } },
+    tags: { include: { tag: true } },
+    owner: { select: { id: true, name: true } },
+  } as const
+
+  // Last activity is a maximum across notes, sent emails and stage history, so
+  // it cannot be expressed as a Prisma orderBy. Ordering the whole filtered
+  // set means computing it for every match and paging in memory — see the note
+  // in lib/candidate-activity.ts on why that is acceptable at this size.
+  if (sort === 'activity') {
+    const matches = await prisma.candidate.findMany({ where, select: { id: true } })
+    const activity = await getLastActivityMap(matches.map((m) => m.id))
+
+    const ordered = matches
+      .map((m) => ({ id: m.id, at: activity.get(m.id)?.getTime() ?? 0 }))
+      .sort((a, b) => b.at - a.at)
+    const pageIds = ordered
+      .slice((page - 1) * CANDIDATES_PAGE_SIZE, page * CANDIDATES_PAGE_SIZE)
+      .map((o) => o.id)
+
+    const rows = await prisma.candidate.findMany({ where: { id: { in: pageIds } }, include })
+    // findMany ignores the order of an `in` list, so restore it.
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    const candidates = pageIds
+      .map((id) => byId.get(id))
+      .filter((c): c is NonNullable<typeof c> => c !== undefined)
+
+    return { candidates, totalCount: matches.length, lastActivity: activity }
+  }
+
   const [candidates, totalCount] = await Promise.all([
     prisma.candidate.findMany({
       where,
-      include: {
-        applications: { include: { job: true } },
-        tags: { include: { tag: true } },
-        owner: { select: { id: true, name: true } },
-      },
+      include,
       orderBy: SORT_ORDER[sort] ?? SORT_ORDER.added,
       skip: (page - 1) * CANDIDATES_PAGE_SIZE,
       take: CANDIDATES_PAGE_SIZE,
@@ -163,7 +198,10 @@ export async function searchCandidates(filters: CandidateSearchFilters) {
     prisma.candidate.count({ where }),
   ])
 
-  return { candidates, totalCount }
+  // The column shows on every sort, so the visible page still needs the value.
+  const lastActivity = await getLastActivityMap(candidates.map((c) => c.id))
+
+  return { candidates, totalCount, lastActivity }
 }
 
 // Drives the counted tabs above the list. Each count is the same predicate the

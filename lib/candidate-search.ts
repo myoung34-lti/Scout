@@ -2,8 +2,11 @@ export const CANDIDATES_PAGE_SIZE = 25
 
 export type AddedDatePreset = 'week' | 'month' | 'custom'
 
-export const CANDIDATE_SORTS = ['added', 'name', 'rating'] as const
+// 'activity' leads: the list's job is to show who needs moving, and that is
+// ordered by when something last happened, not by when they were added.
+export const CANDIDATE_SORTS = ['activity', 'added', 'name', 'rating'] as const
 export type CandidateSort = (typeof CANDIDATE_SORTS)[number]
+export const DEFAULT_CANDIDATE_SORT: CandidateSort = 'activity'
 
 export const CANDIDATE_STATUS_KEYS = [
   'all',

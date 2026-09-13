@@ -18,6 +18,8 @@ import { StarRating } from '@/components/candidates/star-rating'
 import { CandidateRowActions } from '@/components/candidates/candidate-row-actions'
 import { useFilterParams } from '@/lib/use-filter-params'
 import { STAGE_LABELS, stageTone } from '@/lib/pipeline'
+import { relativeDays } from '@/lib/candidate-activity'
+import { DEFAULT_CANDIDATE_SORT } from '@/lib/candidate-search'
 import type { CandidateSort } from '@/lib/candidate-search'
 import type { StageTone } from '@/lib/pipeline'
 import type { PipelineStage } from '@prisma/client'
@@ -45,6 +47,8 @@ export type CandidateRow = {
   rating: number | null
   inTalentPool: boolean
   createdAt: string
+  /** ISO; formatted in the row so "3 days ago" stays current on re-render. */
+  lastActivityAt: string
   displayTitle: string | null
   currentCompany: string | null
   stage: PipelineStage | null
@@ -68,7 +72,7 @@ function SortHeader({
   className?: string
 }) {
   const { searchParams, setSingle } = useFilterParams()
-  const current = (searchParams.get('sort') ?? 'added') as CandidateSort
+  const current = (searchParams.get('sort') ?? DEFAULT_CANDIDATE_SORT) as CandidateSort
   const active = current === column
   const Icon = active ? (column === 'name' ? ArrowUp : ArrowDown) : ChevronsUpDown
 
@@ -76,7 +80,11 @@ function SortHeader({
     <TableHead className={className}>
       <button
         type="button"
-        onClick={() => setSingle('sort', column === 'added' ? undefined : column)}
+        // Clicking the default column clears the param rather than spelling
+        // out the default in every URL.
+        onClick={() =>
+          setSingle('sort', column === DEFAULT_CANDIDATE_SORT ? undefined : column)
+        }
         aria-label={`Sort by ${label}`}
         className={`inline-flex items-center gap-1 uppercase transition-colors hover:text-foreground ${
           active ? 'text-foreground' : ''
@@ -148,6 +156,7 @@ export function CandidatesTable({
           <TableHead>Status</TableHead>
           <TableHead>Recruiter</TableHead>
           <SortHeader column="rating" label="Rating" />
+          <SortHeader column="activity" label="Last Activity" />
           <SortHeader column="added" label="Added" />
           <TableHead className="w-10" aria-label="Actions" />
         </TableRow>
@@ -214,6 +223,14 @@ export function CandidatesTable({
               <TableCell className="text-muted-foreground">{c.recruiter ?? '—'}</TableCell>
               <TableCell>
                 <StarRating value={c.rating} size="sm" />
+              </TableCell>
+              <TableCell
+                className="whitespace-nowrap text-muted-foreground"
+                // The exact timestamp on hover; the relative form is what the
+                // column is for.
+                title={new Date(c.lastActivityAt).toLocaleString()}
+              >
+                {relativeDays(new Date(c.lastActivityAt))}
               </TableCell>
               <TableCell className="text-muted-foreground">{c.createdAt}</TableCell>
               <TableCell className="text-right">

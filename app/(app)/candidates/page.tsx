@@ -4,6 +4,7 @@ import { searchCandidates, getCandidateStatusCounts } from '@/lib/actions/search
 import {
   CANDIDATES_PAGE_SIZE,
   CANDIDATE_SORTS,
+  DEFAULT_CANDIDATE_SORT,
   CANDIDATE_STATUS_KEYS,
 } from '@/lib/candidate-search'
 import type {
@@ -85,9 +86,18 @@ export default async function CandidatesPage({
   const status = CANDIDATE_STATUS_KEYS.find(
     (k) => k === params.status
   ) as CandidateStatusKey | undefined
-  const sort = (CANDIDATE_SORTS.find((s) => s === params.sort) ?? 'added') as CandidateSort
+  const sort = (CANDIDATE_SORTS.find((s) => s === params.sort) ??
+    DEFAULT_CANDIDATE_SORT) as CandidateSort
 
-  const [{ candidates, totalCount }, counts, jobs, jobLocations, tags, users, composeGlobals] =
+  const [
+    { candidates, totalCount, lastActivity },
+    counts,
+    jobs,
+    jobLocations,
+    tags,
+    users,
+    composeGlobals,
+  ] =
     await Promise.all([
       searchCandidates({
         query,
@@ -133,6 +143,7 @@ export default async function CandidatesPage({
     rating: c.rating,
     inTalentPool: c.inTalentPool,
     createdAt: dateFormatter.format(c.createdAt),
+    lastActivityAt: (lastActivity.get(c.id) ?? c.createdAt).toISOString(),
     displayTitle: getCandidateDisplayTitle(c) ?? null,
     currentCompany: c.currentCompany,
     stage: current?.stage ?? null,
