@@ -47,7 +47,7 @@ export default async function HomePage() {
   // the numbers above them. `recruiterId` on the candidate list is the
   // candidate's assigned recruiter (lib/actions/search.ts maps it to
   // ownerId), and scope=mine on the board is the same predicate.
-  const myPipelineHref = '/pipeline?scope=mine'
+  const myPipelineHref = `/pipeline?recruiterId=${snapshot.userId}`
   const myCandidatesHref = `/candidates?recruiterId=${snapshot.userId}&${IN_PROCESS_STAGES.map(
     (s) => `stage=${s}`
   ).join('&')}`

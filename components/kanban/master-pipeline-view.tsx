@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useFilterParams } from '@/lib/use-filter-params'
+import { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ type EmailTemplate = {
 export function MasterPipelineView({
   applications,
   currentUserId,
+  recruiters,
   recruiterName,
   recruiterEmail,
   staticVariables,
@@ -31,6 +32,7 @@ export function MasterPipelineView({
 }: {
   applications: ApplicationWithCandidate[]
   currentUserId: string
+  recruiters: { id: string; name: string }[]
   recruiterName: string
   recruiterEmail: string
   staticVariables: Record<string, string>
@@ -39,30 +41,60 @@ export function MasterPipelineView({
   const [visibleStages, setVisibleStages] = useState<PipelineStage[]>(
     DEFAULT_VISIBLE_STAGES
   )
-  // URL-backed like every other filter in Scout, so a board filtered to one
-  // job can be linked, bookmarked and survives a refresh.
-  const { searchParams, setSingle, setMany } = useFilterParams()
-  const jobId = searchParams.get('jobId') ?? 'ALL'
-  // Home links here with scope=mine, so "Your Pipeline" opens exactly the
-  // people the dashboard funnel counted. Arriving from the nav item shows
-  // everything, as it always has.
+
+  // Both filters stay in the URL, so a board narrowed to one recruiter or job
+  // can be linked and survives a refresh — but they are written with
+  // history.replaceState rather than router.replace.
   //
-  // "Mine" is the candidate's assigned recruiter, not the job's — the same
-  // definition the funnel uses. Scoping by job would show an identical board
-  // to every recruiter sharing a job, which is what it used to do.
-  const scope = searchParams.get('scope') === 'mine' ? 'mine' : 'all'
+  // router.replace refetches the route's RSC payload, and this board's payload
+  // is megabytes: every selection sat re-downloading the whole thing before
+  // anything on screen moved, which read as the filter simply not working.
+  // Nothing here needs the server — the filtering is client-side over data the
+  // page already has — and Next syncs replaceState into useSearchParams, so
+  // this stays reactive.
+  const searchParams = useSearchParams()
+  const setParams = useCallback(
+    (updates: Record<string, string | undefined>) => {
+      const next = new URLSearchParams(searchParams.toString())
+      for (const [key, value] of Object.entries(updates)) {
+        if (!value || value === 'ALL') next.delete(key)
+        else next.set(key, value)
+      }
+      const qs = next.toString()
+      window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
+    },
+    [searchParams]
+  )
+
+  // Whose board this is — any recruiter, not only the viewer. Home links here
+  // with the viewer's own id so "Your Pipeline" opens exactly the people the
+  // dashboard funnel counted. `scope=mine` is still honoured, for links
+  // already issued (breadcrumbs included) before this became a picker.
+  //
+  // Always the candidate's assigned recruiter, never the job's — the same
+  // definition the funnel uses. Filtering by job assignment would hand an
+  // identical board to every recruiter who shares a job.
+  const jobId = searchParams.get('jobId') ?? 'ALL'
+
+  const recruiterParam = searchParams.get('recruiterId')
+  const recruiterId =
+    searchParams.get('scope') === 'mine'
+      ? currentUserId
+      : recruiterParam && recruiters.some((r) => r.id === recruiterParam)
+        ? recruiterParam
+        : 'ALL'
 
   const scopedApplications = useMemo(
     () =>
-      scope === 'mine'
-        ? applications.filter((a) => a.candidate.ownerId === currentUserId)
-        : applications,
-    [applications, scope, currentUserId]
+      recruiterId === 'ALL'
+        ? applications
+        : applications.filter((a) => a.candidate.ownerId === recruiterId),
+    [applications, recruiterId]
   )
 
   // Derived from the applications already on the board rather than a separate
-  // query — every one of them carries its job. Follows the scope, so "My
-  // jobs" can't offer a job filter that would empty the board.
+  // query — every one of them carries its job. Follows the recruiter filter,
+  // so the job list can never offer a job that would empty the board.
   const jobs = useMemo(() => {
     const byId = new Map<string, string>()
     for (const a of scopedApplications) {
@@ -81,9 +113,8 @@ export function MasterPipelineView({
     [scopedApplications, jobId]
   )
 
-
-  // Counts follow the job filter, so a column's number always describes what
-  // the board is actually showing.
+  // Counts follow both filters, so a column's number always describes what the
+  // board is actually showing.
   const counts = ALL_STAGES.reduce(
     (acc, stage) => {
       acc[stage] = visibleApplications.filter((a) => a.stage === stage).length
@@ -102,32 +133,40 @@ export function MasterPipelineView({
         />
         <div className="flex items-center gap-2">
           <Select
-            value={scope}
-            // Changing scope clears the job filter in the same navigation —
-            // a job with none of my candidates would leave an empty board
-            // with no visible cause.
-            onValueChange={(v) => setMany({ scope: v === 'mine' ? 'mine' : undefined, jobId: undefined })}
+            value={recruiterId}
+            // Switching recruiter clears the job filter in the same update: a
+            // job with none of that recruiter's candidates would otherwise
+            // leave an empty board with no visible cause. `scope` goes too,
+            // so an old scope=mine link can't outvote an explicit choice.
+            onValueChange={(v) =>
+              setParams({ recruiterId: v, jobId: undefined, scope: undefined })
+            }
           >
-            <SelectTrigger aria-label="Filter by ownership" className="w-auto min-w-36">
+            <SelectTrigger aria-label="Filter by recruiter" className="w-auto min-w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All recruiters</SelectItem>
-              <SelectItem value="mine">My candidates</SelectItem>
+              <SelectItem value="ALL">All recruiters</SelectItem>
+              {recruiters.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                  {r.id === currentUserId ? ' (you)' : ''}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Select value={jobId} onValueChange={(v) => setSingle('jobId', v)}>
-          <SelectTrigger aria-label="Filter by job" className="w-auto min-w-40">
-            <SelectValue placeholder="All jobs" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All jobs</SelectItem>
-            {jobs.map((j) => (
-              <SelectItem key={j.id} value={j.id}>
-                {j.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <Select value={jobId} onValueChange={(v) => setParams({ jobId: v })}>
+            <SelectTrigger aria-label="Filter by job" className="w-auto min-w-40">
+              <SelectValue placeholder="All jobs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All jobs</SelectItem>
+              {jobs.map((j) => (
+                <SelectItem key={j.id} value={j.id}>
+                  {j.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
       </div>

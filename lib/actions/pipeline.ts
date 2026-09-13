@@ -12,11 +12,22 @@ import {
 } from '@/lib/pipeline'
 import type { PipelineStage, RejectionReason } from '@prisma/client'
 
+// Job.description is a full job posting and the board never renders it, but
+// including the whole Job row copies it into every application: on the master
+// board that was 1.34 MB of a 1.88 MB payload, all of it the same handful of
+// descriptions repeated. Omitting it is invisible on screen and removes 71%
+// of the bytes — which is what made the board's own filters feel dead, since
+// every change re-downloaded the lot.
+const BOARD_INCLUDE = {
+  candidate: true,
+  job: { omit: { description: true } },
+} as const
+
 export async function getBoardApplications(jobId: string) {
   await requireSession()
   return prisma.application.findMany({
     where: { jobId, ...VISIBLE_APPLICATION },
-    include: { candidate: true, job: true },
+    include: BOARD_INCLUDE,
     orderBy: { createdAt: 'asc' },
   })
 }
@@ -28,7 +39,7 @@ export async function getAllBoardApplications() {
   await requireSession()
   return prisma.application.findMany({
     where: { job: { status: { in: ['OPEN', 'ON_HOLD'] } }, ...VISIBLE_APPLICATION },
-    include: { candidate: true, job: true },
+    include: BOARD_INCLUDE,
     orderBy: { createdAt: 'asc' },
   })
 }

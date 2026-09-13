@@ -1,14 +1,16 @@
 import { getAllBoardApplications } from '@/lib/actions/pipeline'
 import { requireSession } from '@/lib/session'
+import { listUsers } from '@/lib/actions/users'
 import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
 import { MasterPipelineView } from '@/components/kanban/master-pipeline-view'
 
 export const metadata = { title: 'Pipeline' }
 
 export default async function PipelinePage() {
-  const [user, applications, composeGlobals] = await Promise.all([
+  const [user, applications, recruiters, composeGlobals] = await Promise.all([
     requireSession(),
     getAllBoardApplications(),
+    listUsers(),
     getComposeEmailGlobals(),
   ])
 
@@ -23,6 +25,7 @@ export default async function PipelinePage() {
       <MasterPipelineView
         applications={applications}
         currentUserId={user.id}
+        recruiters={recruiters.map((r) => ({ id: r.id, name: r.name }))}
         recruiterName={composeGlobals.recruiterName}
         recruiterEmail={composeGlobals.recruiterEmail}
         staticVariables={composeGlobals.staticVariables}

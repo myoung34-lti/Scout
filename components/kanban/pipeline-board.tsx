@@ -17,9 +17,15 @@ import type {
   RejectionReason,
 } from '@prisma/client'
 
+// Job minus its description: the board never shows a job posting, and
+// carrying it duplicates the same text into every card's payload. Narrowing
+// the type here is what keeps that honest — anything that starts needing the
+// description fails to compile rather than silently re-inflating the board.
+export type BoardJob = Omit<Job, 'description'>
+
 export type ApplicationWithCandidate = Application & {
   candidate: Candidate
-  job?: Job
+  job?: BoardJob
 }
 
 type EmailTemplate = {

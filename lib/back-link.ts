@@ -15,11 +15,15 @@ export type BackLink = { label: string; href: string }
 export const CANDIDATES_BACK: BackLink = { label: 'Candidates', href: '/candidates' }
 
 const CUID = /^[a-z0-9]{20,32}$/
+// User ids are uuids (User.id is @db.Uuid), not cuids like every other model.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Only the params a board actually uses, re-serialised in a fixed order. */
 function pipelineQuery(params: URLSearchParams): string {
   const out = new URLSearchParams()
-  if (params.get('scope') === 'mine') out.set('scope', 'mine')
+  const recruiterId = params.get('recruiterId')
+  if (recruiterId && UUID.test(recruiterId)) out.set('recruiterId', recruiterId)
+  else if (params.get('scope') === 'mine') out.set('scope', 'mine')
   const jobId = params.get('jobId')
   if (jobId && CUID.test(jobId)) out.set('jobId', jobId)
   const q = out.toString()
