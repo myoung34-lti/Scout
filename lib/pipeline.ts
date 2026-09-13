@@ -66,6 +66,20 @@ export const ACTIVE_STAGES: PipelineStage[] = [
 // Terminal outcomes, reachable from any active stage.
 export const TERMINAL_STAGES: PipelineStage[] = ['HIRED', 'REJECTED']
 
+/**
+ * The next stage forward in the funnel, or null if there isn't one.
+ *
+ * Returns null at OFFER rather than continuing to HIRED: hiring is a terminal
+ * outcome that stamps hiredAt and feeds the Hires KPI, so it stays a
+ * deliberate, one-at-a-time decision and never something a bulk action can do
+ * by accident. Also null for a stage that is already terminal.
+ */
+export function nextActiveStage(stage: PipelineStage): PipelineStage | null {
+  const i = ACTIVE_STAGES.indexOf(stage)
+  if (i === -1 || i === ACTIVE_STAGES.length - 1) return null
+  return ACTIVE_STAGES[i + 1]
+}
+
 // The subset of active stages that represent an actual interview — used to
 // restrict the "Add Interview" screen's type picker (Applied/Screening/Offer
 // aren't interviews).

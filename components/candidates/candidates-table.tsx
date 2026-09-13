@@ -1,8 +1,11 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { BulkActionsBar } from '@/components/candidates/bulk-actions-bar'
 import {
   Table,
   TableBody,
@@ -93,10 +96,53 @@ export function CandidatesTable({
   candidates: CandidateRow[]
   jobs: { id: string; internalName: string }[]
 }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const pageIds = useMemo(() => candidates.map((c) => c.id), [candidates])
+  const pageKey = useMemo(() => pageIds.join(','), [pageIds])
+  const [seenPageKey, setSeenPageKey] = useState(pageKey)
+
+  // Filtering, sorting or paging replaces the rows under the selection, and a
+  // bulk action against people the reader can no longer see is exactly how the
+  // wrong candidates get rejected. Reset during render — React's documented
+  // way to derive state from props — rather than in an effect, which would
+  // leave one frame where the stale selection is still actionable.
+  if (seenPageKey !== pageKey) {
+    setSeenPageKey(pageKey)
+    setSelected(new Set())
+  }
+
+  const selectedIds = useMemo(
+    () => pageIds.filter((id) => selected.has(id)),
+    [pageIds, selected]
+  )
+  const allSelected = pageIds.length > 0 && selectedIds.length === pageIds.length
+  const someSelected = selectedIds.length > 0 && !allSelected
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
   return (
-    <Table>
+    <div className="space-y-3">
+      <BulkActionsBar selectedIds={selectedIds} onClear={() => setSelected(new Set())} />
+      <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
+          <TableHead className="w-10">
+            <Checkbox
+              checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+              onCheckedChange={(checked) =>
+                setSelected(checked === true ? new Set(pageIds) : new Set())
+              }
+              aria-label={allSelected ? 'Clear selection' : 'Select all on this page'}
+            />
+          </TableHead>
           <SortHeader column="name" label="Name" />
           <TableHead>Title / Current Company</TableHead>
           <TableHead>Status</TableHead>
@@ -111,7 +157,14 @@ export function CandidatesTable({
           const name = `${c.firstName} ${c.lastName}`
           const extraTags = c.tags.length - MAX_VISIBLE_TAGS
           return (
-            <TableRow key={c.id}>
+            <TableRow key={c.id} data-state={selected.has(c.id) ? 'selected' : undefined}>
+              <TableCell>
+                <Checkbox
+                  checked={selected.has(c.id)}
+                  onCheckedChange={(checked) => toggleOne(c.id, checked === true)}
+                  aria-label={`Select ${name}`}
+                />
+              </TableCell>
               <TableCell className="max-w-[22rem] whitespace-normal">
                 <div className="flex items-start gap-2.5">
                   <span
@@ -177,6 +230,7 @@ export function CandidatesTable({
           )
         })}
       </TableBody>
-    </Table>
+      </Table>
+    </div>
   )
 }
