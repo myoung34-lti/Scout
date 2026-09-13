@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { MapPin, Mail, Phone, ExternalLink, Users, Tag, FileText } from 'lucide-react'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
+import { resolveBackLink } from '@/lib/back-link'
 import { getCandidate } from '@/lib/actions/candidates'
 import { STAGE_LABELS, TERMINAL_STAGES, rejectionReasonText, stageTone } from '@/lib/pipeline'
 import { Badge } from '@/components/ui/badge'
@@ -69,10 +70,14 @@ const shortDateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium
 
 export default async function CandidateProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ candidateId: string }>
+  searchParams: Promise<{ from?: string }>
 }) {
   const { candidateId } = await params
+  const { from } = await searchParams
+  const backLink = await resolveBackLink(from)
   await requireSession()
   const [candidate, allTags, allJobs, allUsers, composeGlobals] = await Promise.all([
     getCandidate(candidateId),
@@ -134,7 +139,7 @@ export default async function CandidateProfilePage({
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: 'Candidates', href: '/candidates' },
+          backLink,
           { label: `${candidate.firstName} ${candidate.lastName}` },
         ]}
       />

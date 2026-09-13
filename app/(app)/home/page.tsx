@@ -41,9 +41,17 @@ export default async function HomePage() {
   const busiest = Math.max(1, ...snapshot.funnel.map((s) => s.count))
   const funnelTotal = snapshot.funnel.reduce((sum, s) => sum + s.count, 0)
 
-  // Exactly the predicate behind the In Process number, so the card and the
-  // list it opens can't disagree.
-  const inProcessHref = `/candidates?recruiterId=${snapshot.userId}&${IN_PROCESS_STAGES.map(
+  // The In Process number counts everyone in process on the jobs this user is
+  // the recruiter for — job assignment, not candidate ownership. It used to
+  // link to /candidates?recruiterId=…, but that filter means Candidate.owner
+  // (lib/actions/search.ts), so the card read 18 and opened a list of 0.
+  // The scoped board is the one place that shows exactly these people.
+  const myPipelineHref = '/pipeline?scope=mine'
+
+  // Needs Attention is built from a different predicate again — candidates
+  // this user OWNS (see lib/actions/home.ts's `mine`) — so its "View all"
+  // goes to the owner-filtered list, which does match it.
+  const myCandidatesHref = `/candidates?recruiterId=${snapshot.userId}&${IN_PROCESS_STAGES.map(
     (s) => `stage=${s}`
   ).join('&')}`
 
@@ -86,8 +94,8 @@ export default async function HomePage() {
           label="Candidates In Process"
           icon={<Users />}
           stat={{ current: snapshot.inProcess }}
-          href={inProcessHref}
-          caption="Assigned to you · Intro → Offer"
+          href={myPipelineHref}
+          caption="On your jobs · Intro → Offer"
         />
         <StatCard
           label="Hires This Quarter"
@@ -103,7 +111,7 @@ export default async function HomePage() {
             <CardTitle>Your Pipeline</CardTitle>
             <CardAction>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/pipeline">
+                <Link href={myPipelineHref}>
                   Open pipeline
                   <ArrowRight />
                 </Link>
@@ -126,7 +134,10 @@ export default async function HomePage() {
               <ul className="flex flex-1 flex-col justify-center gap-3">
                 {snapshot.funnel.map(({ stage, count }) => (
                   <li key={stage}>
-                    <Link href="/pipeline" className="group flex items-center gap-3 text-sm">
+                    <Link
+                      href={myPipelineHref}
+                      className="group flex items-center gap-3 text-sm"
+                    >
                       <span className="w-40 shrink-0 truncate text-muted-foreground group-hover:text-foreground">
                         {STAGE_LABELS[stage]}
                       </span>
@@ -224,7 +235,7 @@ export default async function HomePage() {
           </CardTitle>
           <CardAction>
             <Button variant="ghost" size="sm" asChild>
-              <Link href={inProcessHref}>
+              <Link href={myCandidatesHref}>
                 View all
                 <ArrowRight />
               </Link>

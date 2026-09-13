@@ -1,12 +1,13 @@
-import { getAllBoardApplications } from '@/lib/actions/pipeline'
+import { getAllBoardApplications, getMyRecruiterJobIds } from '@/lib/actions/pipeline'
 import { getComposeEmailGlobals } from '@/lib/actions/compose-email-context'
 import { MasterPipelineView } from '@/components/kanban/master-pipeline-view'
 
 export const metadata = { title: 'Pipeline' }
 
 export default async function PipelinePage() {
-  const [applications, composeGlobals] = await Promise.all([
+  const [applications, myJobIds, composeGlobals] = await Promise.all([
     getAllBoardApplications(),
+    getMyRecruiterJobIds(),
     getComposeEmailGlobals(),
   ])
 
@@ -20,6 +21,7 @@ export default async function PipelinePage() {
       </div>
       <MasterPipelineView
         applications={applications}
+        myJobIds={myJobIds}
         recruiterName={composeGlobals.recruiterName}
         recruiterEmail={composeGlobals.recruiterEmail}
         staticVariables={composeGlobals.staticVariables}

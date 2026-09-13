@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useDraggable } from '@dnd-kit/core'
 import { MoreHorizontal, UserRound, Briefcase } from 'lucide-react'
 import type { ApplicationWithCandidate } from '@/components/kanban/pipeline-board'
@@ -21,6 +21,17 @@ export function ApplicationCard({
   application: ApplicationWithCandidate
 }) {
   const router = useRouter()
+  // Where this card is being viewed from, handed to the profile so its
+  // breadcrumb returns here — the master board with its scope and job filter
+  // intact, or the job's own board — instead of always to the full candidate
+  // list. Read from the router rather than drilled down as a prop, since it
+  // is exactly a routing question and the card renders on both boards.
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const query = searchParams.toString()
+  const from = query ? `${pathname}?${query}` : pathname
+  const profileHref = `/candidates/${application.candidateId}?from=${encodeURIComponent(from)}`
+
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: application.id })
 
@@ -57,7 +68,7 @@ export function ApplicationCard({
         </span>
         <div className="min-w-0 flex-1">
           <Link
-            href={`/candidates/${application.candidateId}`}
+            href={profileHref}
             className="block truncate text-sm font-medium hover:text-primary hover:underline"
             onClick={(e) => {
               if (isDragging) e.preventDefault()
@@ -87,7 +98,7 @@ export function ApplicationCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-40">
             <DropdownMenuItem
-              onSelect={() => router.push(`/candidates/${application.candidateId}`)}
+              onSelect={() => router.push(profileHref)}
             >
               <UserRound className="size-4" />
               View profile
