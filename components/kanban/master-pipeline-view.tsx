@@ -23,14 +23,14 @@ type EmailTemplate = {
 
 export function MasterPipelineView({
   applications,
-  myJobIds,
+  currentUserId,
   recruiterName,
   recruiterEmail,
   staticVariables,
   emailTemplates,
 }: {
   applications: ApplicationWithCandidate[]
-  myJobIds: string[]
+  currentUserId: string
   recruiterName: string
   recruiterEmail: string
   staticVariables: Record<string, string>
@@ -43,16 +43,21 @@ export function MasterPipelineView({
   // job can be linked, bookmarked and survives a refresh.
   const { searchParams, setSingle, setMany } = useFilterParams()
   const jobId = searchParams.get('jobId') ?? 'ALL'
-  // Home links here with scope=mine, so "Your Pipeline" opens the same set of
+  // Home links here with scope=mine, so "Your Pipeline" opens exactly the
   // people the dashboard funnel counted. Arriving from the nav item shows
   // everything, as it always has.
+  //
+  // "Mine" is the candidate's assigned recruiter, not the job's — the same
+  // definition the funnel uses. Scoping by job would show an identical board
+  // to every recruiter sharing a job, which is what it used to do.
   const scope = searchParams.get('scope') === 'mine' ? 'mine' : 'all'
 
-  const mine = useMemo(() => new Set(myJobIds), [myJobIds])
-
   const scopedApplications = useMemo(
-    () => (scope === 'mine' ? applications.filter((a) => a.job && mine.has(a.job.id)) : applications),
-    [applications, scope, mine]
+    () =>
+      scope === 'mine'
+        ? applications.filter((a) => a.candidate.ownerId === currentUserId)
+        : applications,
+    [applications, scope, currentUserId]
   )
 
   // Derived from the applications already on the board rather than a separate
@@ -99,8 +104,8 @@ export function MasterPipelineView({
           <Select
             value={scope}
             // Changing scope clears the job filter in the same navigation —
-            // a job from "all" is usually not in "mine", and leaving it set
-            // would show an empty board with no obvious cause.
+            // a job with none of my candidates would leave an empty board
+            // with no visible cause.
             onValueChange={(v) => setMany({ scope: v === 'mine' ? 'mine' : undefined, jobId: undefined })}
           >
             <SelectTrigger aria-label="Filter by ownership" className="w-auto min-w-36">
@@ -108,7 +113,7 @@ export function MasterPipelineView({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All recruiters</SelectItem>
-              <SelectItem value="mine">My jobs</SelectItem>
+              <SelectItem value="mine">My candidates</SelectItem>
             </SelectContent>
           </Select>
           <Select value={jobId} onValueChange={(v) => setSingle('jobId', v)}>

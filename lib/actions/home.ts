@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { requireSession } from '@/lib/session'
 import { IN_PROCESS_STAGES } from '@/lib/pipeline'
-import { VISIBLE_APPLICATION, CANDIDATE_VISIBLE } from '@/lib/candidate-visibility'
+import { CANDIDATE_VISIBLE } from '@/lib/candidate-visibility'
 import type { PipelineStage } from '@prisma/client'
 
 const STALE_AFTER_DAYS = 7
@@ -25,8 +25,8 @@ export type HomeSnapshot = {
   inProcess: number
   hiresThisQuarter: number
   quarterLabel: string
-  // The funnel leads the dashboard: everyone in process on the jobs I'm the
-  // recruiter for.
+  // The funnel leads the dashboard: the candidates assigned to me that are
+  // still in process.
   funnel: { stage: PipelineStage; count: number }[]
   stalled: {
     candidateId: string
@@ -51,13 +51,14 @@ export type HomeSnapshot = {
 
 export async function getHomeSnapshot(): Promise<HomeSnapshot> {
   const authUser = await requireSession()
+  // Everything about candidates follows candidate assignment — the funnel,
+  // the In Process number, the quiet list and hires. Only Jobs Assigned
+  // follows job assignment, because that genuinely is a question about jobs.
+  //
+  // The funnel used to follow job assignment, which made it useless as a
+  // personal dashboard here: all three recruiters are assigned to the same
+  // eight jobs, so every one of them saw an identical 18.
   const mine = { candidate: { ownerId: authUser.id, deletedAt: null }, removedAt: null }
-  // The funnel and the Jobs Assigned count follow job assignment; the quiet
-  // list and hires follow candidate ownership. Two different questions.
-  const myJobs = {
-    job: { assignments: { some: { userId: authUser.id, role: 'RECRUITER' as const } } },
-    ...VISIBLE_APPLICATION,
-  }
   const qStart = quarterStart()
 
   const [user, jobsAssigned, funnelApps, activeApps, hires, openInterviews] =
@@ -70,7 +71,7 @@ export async function getHomeSnapshot(): Promise<HomeSnapshot> {
       },
     }),
     prisma.application.findMany({
-      where: { stage: { in: IN_PROCESS_STAGES }, ...myJobs },
+      where: { stage: { in: IN_PROCESS_STAGES }, ...mine },
       select: { stage: true, candidateId: true },
     }),
     prisma.application.findMany({

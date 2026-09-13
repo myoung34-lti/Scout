@@ -41,16 +41,13 @@ export default async function HomePage() {
   const busiest = Math.max(1, ...snapshot.funnel.map((s) => s.count))
   const funnelTotal = snapshot.funnel.reduce((sum, s) => sum + s.count, 0)
 
-  // The In Process number counts everyone in process on the jobs this user is
-  // the recruiter for — job assignment, not candidate ownership. It used to
-  // link to /candidates?recruiterId=…, but that filter means Candidate.owner
-  // (lib/actions/search.ts), so the card read 18 and opened a list of 0.
-  // The scoped board is the one place that shows exactly these people.
+  // Every candidate number on this page — In Process, the funnel, Needs
+  // Attention, Hires — counts the candidates assigned to this recruiter, so
+  // both destinations below filter on exactly that and can't disagree with
+  // the numbers above them. `recruiterId` on the candidate list is the
+  // candidate's assigned recruiter (lib/actions/search.ts maps it to
+  // ownerId), and scope=mine on the board is the same predicate.
   const myPipelineHref = '/pipeline?scope=mine'
-
-  // Needs Attention is built from a different predicate again — candidates
-  // this user OWNS (see lib/actions/home.ts's `mine`) — so its "View all"
-  // goes to the owner-filtered list, which does match it.
   const myCandidatesHref = `/candidates?recruiterId=${snapshot.userId}&${IN_PROCESS_STAGES.map(
     (s) => `stage=${s}`
   ).join('&')}`
@@ -95,7 +92,7 @@ export default async function HomePage() {
           icon={<Users />}
           stat={{ current: snapshot.inProcess }}
           href={myPipelineHref}
-          caption="On your jobs · Intro → Offer"
+          caption="Assigned to you · Intro → Offer"
         />
         <StatCard
           label="Hires This Quarter"
@@ -122,11 +119,14 @@ export default async function HomePage() {
             {funnelTotal === 0 ? (
               <EmptyState
                 title="Nobody in process"
-                description="Assign yourself as recruiter on a job to see its pipeline here."
+                description="Candidates assigned to you appear here once they reach Introductory Call."
                 className="py-8"
                 action={
+                  // The way out of this empty state is to become a
+                  // candidate's assigned recruiter, so it points at the
+                  // candidate list rather than at jobs.
                   <Button variant="outline" size="sm" asChild>
-                    <Link href="/jobs?status=ALL">Browse jobs</Link>
+                    <Link href="/candidates">Browse candidates</Link>
                   </Button>
                 }
               />
@@ -158,7 +158,7 @@ export default async function HomePage() {
               </ul>
             )}
             <p className="mt-4 text-xs text-muted-foreground">
-              Everyone in process on the jobs you&rsquo;re the recruiter for.
+              Everyone in process who&rsquo;s assigned to you.
             </p>
           </CardContent>
         </Card>

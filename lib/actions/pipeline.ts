@@ -16,18 +16,6 @@ export async function getBoardApplications(jobId: string) {
   })
 }
 
-// The jobs the signed-in user is the recruiter on. Returned as ids rather
-// than applications so the board can scope itself client-side, the same way
-// its job filter already does, instead of a round trip per toggle.
-export async function getMyRecruiterJobIds(): Promise<string[]> {
-  const user = await requireSession()
-  const jobs = await prisma.job.findMany({
-    where: { assignments: { some: { userId: user.id, role: 'RECRUITER' } } },
-    select: { id: true },
-  })
-  return jobs.map((j) => j.id)
-}
-
 // Cross-job master board: every application still in process across all
 // open/on-hold positions. Closed jobs are excluded — their candidates are no
 // longer actively "in process."
